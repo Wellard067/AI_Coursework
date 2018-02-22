@@ -579,5 +579,5 @@ int Game::numBlueBuildings() const
 
 int Game::numRedBuildings() const
 {
-	return redBuildings.size();
+	return redBuildings.size(); //testing
 }
