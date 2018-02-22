@@ -1,0 +1,22 @@
+﻿  tank.cpp
+  shell.cpp
+  playerTank.cpp
+  obstacle.cpp
+  main.cpp
+  game.cpp
+h:\documents\ai\coursework\tankwar-cw(1)\tankwar-cw update\src\game.cpp(470): warning C4996: 'sf::Text::setColor': was declared deprecated
+  h:\documents\ai\coursework\tankwar-cw(1)\tankwar-cw update\sfml-2.4.1\include\sfml\graphics\text.hpp(177): note: see declaration of 'sf::Text::setColor'
+h:\documents\ai\coursework\tankwar-cw(1)\tankwar-cw update\src\game.cpp(483): warning C4474: 'sprintf_s' : too many arguments passed for format string
+  h:\documents\ai\coursework\tankwar-cw(1)\tankwar-cw update\src\game.cpp(483): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
+h:\documents\ai\coursework\tankwar-cw(1)\tankwar-cw update\src\game.cpp(490): warning C4474: 'sprintf_s' : too many arguments passed for format string
+  h:\documents\ai\coursework\tankwar-cw(1)\tankwar-cw update\src\game.cpp(490): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
+h:\documents\ai\coursework\tankwar-cw(1)\tankwar-cw update\src\game.cpp(495): warning C4474: 'sprintf_s' : too many arguments passed for format string
+  h:\documents\ai\coursework\tankwar-cw(1)\tankwar-cw update\src\game.cpp(495): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
+h:\documents\ai\coursework\tankwar-cw(1)\tankwar-cw update\src\game.cpp(500): warning C4474: 'sprintf_s' : too many arguments passed for format string
+  h:\documents\ai\coursework\tankwar-cw(1)\tankwar-cw update\src\game.cpp(500): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
+  DumbTank.cpp
+  boundingBox.cpp
+  aitank.cpp
+  Generating Code...
+  tankwar.vcxproj -> H:\Documents\AI\Coursework\tankwar-CW(1)\tankwar-CW Update\Debug\tankwar.exe
+  tankwar.vcxproj -> H:\Documents\AI\Coursework\tankwar-CW(1)\tankwar-CW Update\Debug\tankwar.pdb (Full PDB)
