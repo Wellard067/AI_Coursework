@@ -4,7 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <list>
 
-#include "DumbTank.h"
+#include "Henry.h"
 #include "playerTank.h"
 #include "obstacle.h"
 #include "shell.h"
@@ -32,7 +32,7 @@ class Game : public sf::Drawable
 		~Game(); // Destructor
 		virtual void draw(sf::RenderTarget &target, sf::RenderStates states) const; // Draw the game
 		void play(); // Play the game for one timestep
-		DumbTank npc; // Red tank
+		Henry npc; // Red tank
 		PlayerTank player; // Blue tank
 		void keyPressed(sf::Keyboard::Key key); // function for processing input
 		void keyReleased(sf::Keyboard::Key key); // function for processing input
