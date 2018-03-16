@@ -4,6 +4,7 @@
 
 Henry::Henry()
 {
+	clearMovement();
 }
 
 
@@ -13,7 +14,13 @@ Henry::~Henry()
 
 void Henry::move()
 {
-	turretMachine();
+	if (backward)
+	{
+ 		goBackward();
+	}
+	turretAimMachine();
+	turretfiringMachine();
+	tankMachine();
 }
 
 void Henry::reset()
@@ -30,85 +37,90 @@ void Henry::markTarget(Position p)
 	enemyType = BASE;
 	float xDistanceBetweenAITankAndTarget = getX() - p.getX();
 	float yDistanceBetweenAITankAndTarget = getY() - p.getY();
-	directionOfTarget = atan2(xDistanceBetweenAITankAndTarget, yDistanceBetweenAITankAndTarget) * 180 / PI;
-	turrentFacingDirection = directionOfTarget + 180;
+	//Using tan(angle) = y/x to work out the angle between the target and our AI tank
+	angleBetweeThisAndTarget = atan2(yDistanceBetweenAITankAndTarget, xDistanceBetweenAITankAndTarget) * 180 / PI;
+	targetRotationAngle = angleBetweeThisAndTarget + 180;
 
-	float dx = (float)(p.getX() - getX());
-	float dy = (float)(p.getY() - getY());
-	distanceBetweenThisAndTarget = sqrt(dx*dx + dy*dy);
-	std::cout << "Target spotted at (" << p.getX() << ", " << p.getY() << ")\n";
+	//std::cout << "Target spotted at (" << p.getX() << ", " << p.getY() << ")\n";
 }
 
 void Henry::markBase(Position p)
 {
-	detectedEnemy = true;
-	float deltaX = getX() - p.getX();
-	std::cout << "Base spotted at (" << p.getX() << ", " << p.getY() << ")\n";
+	//std::cout << "Base spotted at (" << p.getX() << ", " << p.getY() << ")\n";
 }
 
 void Henry::markShell(Position p)
 {
-	std::cout << "Shell spotted at (" << p.getX() << ", " << p.getY() << ")\n";
+	detectedShell = true;
+	float xDistanceBetweenAITankAndTarget = getX() - p.getX();
+	float yDistanceBetweenAITankAndTarget = getY() - p.getY();
+	angleBetweeThisAndTarget = atan2(yDistanceBetweenAITankAndTarget, xDistanceBetweenAITankAndTarget) * 180 / PI;
+	bearingDegrees = angleBetweeThisAndTarget;
+	bearingDegrees = (bearingDegrees > 0.0 ? bearingDegrees : (360.0 + bearingDegrees));
+	float dx = (float)(p.getX() - getX());
+	float dy = (float)(p.getY() - getY());
+	distanceBetweenThisAndTarget = sqrt(dx*dx + dy*dy);
+	//std::cout << "Shell spotted at (" << p.getX() << ", " << p.getY() << ")\n";
+	std::cout << bearingDegrees << ")\n";
 }
 
 void Henry::markEnemy(Position p)
 {
 	detectedEnemy = true;
 	enemyType = TANK;
-	std::cout << "Enemy spotted at (" << p.getX() << ", " << p.getY() << ")\n";
+	//std::cout << "Enemy spotted at (" << p.getX() << ", " << p.getY() << ")\n";
+	float xDistanceBetweenAITankAndTarget = getX() - p.getX();
+	float yDistanceBetweenAITankAndTarget = getY() - p.getY();
+	angleBetweeThisAndTarget = atan2(yDistanceBetweenAITankAndTarget, xDistanceBetweenAITankAndTarget) * 180 / PI;
+	targetRotationAngle = angleBetweeThisAndTarget + 180;
+
 }
 
-void Henry::turretMachine()
+void Henry::turretAimMachine()
 {
-	if (turretState == DETECTION&& detectedEnemy)
+	if (turretAimState == DETECTION&&detectedEnemy)
 	{
-		if (enemyType == TANK)
-		{
-			turretState = SHOOTINGTANK;
-		}
-		else if (enemyType == BASE)
-		{
-			turretState = SHOOTINGBASE;
-		}
+		turretAimState = AIM;
 	}
-	if (getNumberOfShells() == 0&&(turretState==SHOOTINGBASE||turretState==SHOOTINGTANK))
+	if (turretAimState == AIM&&!detectedEnemy)
 	{
-		turretState = NOAMMO;
+		turretAimState = DETECTION;
 	}
-	if (turretState == AIM)
-	{
-
-	}
-	if (turretState == SHOOTINGBASE)
-	{
-
-	}
-	if (turretState == SHOOTINGBASE&&(baseIsDead||tankenDamageRecently))
-	{
-		turretState = DETECTION;
-	}
-	if (turretState == SHOOTINGTANK && enemyIsDead)
-	{
-		turretState = DETECTION;
-	}
-	switch (turretState)
+	switch (turretAimState)
 	{
 	case DETECTION:
+	{
+		detectingEnemy = true;
 		turretGoRight();
+	}
 		break;
-	case AIM:
-
-		stopTurret();
-
+	case AIM: {
+		float deltaR = turretTh - targetRotationAngle;
+		if (deltaR > 1 && deltaR < 180) {
+			turretGoLeft();
+			turretHasTargetLocked = false;
+		}
+		else if (deltaR < -1 && deltaR > -180) {
+			turretGoRight();
+			turretHasTargetLocked = false;
+		}
+		else if (deltaR > 180) {
+			turretGoRight();
+			turretHasTargetLocked = false;
+		}
+		else if (deltaR < -180) {
+			turretGoLeft();
+			turretHasTargetLocked = false;
+		}
+		else {
+			turretHasTargetLocked = true;
+			detectedEnemy = false;
+			detectingEnemy = false;
+			stopTurret();
+			clearMovement();
+		}
 		break;
-	case SHOOTINGTANK:
-		std::cout << "CurrentState (" << turretState<< ")\n";
-		stopTurret();
-		break;
-	case SHOOTINGBASE:
-		std::cout << "CurrentState (" << turretState << ")\n";
-		stopTurret();
-		break;
+	}
 	case NOAMMO:
 		break;
 	default:
@@ -116,43 +128,104 @@ void Henry::turretMachine()
 	}
 
 }
-
+void Henry::turretfiringMachine()
+{
+	if (turretFiringState == LOOKINGFORTARGET&&turretHasTargetLocked)
+	{
+		if (enemyType==TANK)
+		{
+			turretFiringState = SHOOTINGTANK;
+		}
+		if (enemyType == BASE)
+		{
+			turretFiringState = SHOOTINGBASE;
+		}
+	}
+	if ((turretFiringState == SHOOTINGTANK|| turretFiringState == SHOOTINGBASE)&&detectingEnemy)
+	{
+		turretFiringState = LOOKINGFORTARGET;
+	}
+	switch (turretFiringState)
+	{
+	case SHOOTINGBASE:
+	{
+		firing = true;
+	}
+	break;
+	case SHOOTINGTANK: {
+		firing = true;
+	}
+	break;
+	case LOOKINGFORTARGET:
+	{
+		firing = false;
+	}
+		break;
+	default:
+		break;
+	}
+}
 void Henry::tankMachine()
 {
-	enum TankState {ROTATE,DETECTION,MOVINGTOWARD,IDLE,RUNAWAY};
-	TankState tankState = DETECTION;
-	if (tankState==DETECTION&&detectedEnemy||distanceBetweenThisAndTarget > safeDistance)
+	//if (tankMovementState==ROTATE&&tankFacingDirection== angleBetweeThisAndTarget)
+	//{
+	//	tankMovementState = MOVINGTOWARD;
+	//}
+	//if (tankMovementState == MOVINGTOWARD&&distanceBetweenThisAndTarget<safeDistance)
+	//{
+	//	tankMovementState = IDLE;
+	//}
+	//if (tankMovementState == IDLE&&enemyIsDead)
+	//{
+	//}
+	if (tankMovementState == MOVINGTOWARD && getNumberOfShells()<=0)
 	{
-		tankState = ROTATE;
+		tankMovementState = RUNAWAY;
 	}
-	if (tankState==ROTATE&&tankFacingDirection== directionOfTarget)
+	if (tankMovementState == IDLE && detectedShell) 
 	{
-		tankState = MOVINGTOWARD;
+		tankMovementState = DODGESHELL;
 	}
-	if (tankState == MOVINGTOWARD&&distanceBetweenThisAndTarget<safeDistance)
+	switch (tankMovementState)
 	{
-		tankState = IDLE;
-	}
-	if (tankState == IDLE&&enemyIsDead)
-	{
-		tankState = DETECTION;
-	}
-	if (tankState == MOVINGTOWARD && getNumberOfShells()<=0)
-	{
-		tankState = RUNAWAY;
-	}
-	switch (tankState)
-	{
-	case DETECTION:
-		break;
 	case ROTATE:
 		break;
 	case MOVINGTOWARD:
 		break;
 	case IDLE:
+		ShellDetectedTimer = 0;
 		break;
 	case RUNAWAY:
-				break;
+		break;
+	case DODGESHELL:
+	{
+
+		if (ShellDetectedTimer < 50)
+		{
+			if (distanceBetweenThisAndTarget < 119)
+			{
+				ShellDetectedTimer++;
+				if (bearingDegrees >181)
+				{
+					backward = false;
+					forward = true;
+				}
+				if (bearingDegrees <179)
+				{
+					backward = true;
+					forward = false;
+				}
+			}
+		}
+		else
+		{
+			backward = false;
+			forward = false;
+			detectedShell = false;
+			tankMovementState = IDLE;
+		}
+	}
+		break;
 	default:
 		break;
 	}
