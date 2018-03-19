@@ -36,6 +36,7 @@ private:
 	//turrentMachine variables
 	bool baseIsDead = false;
 	float targetRotationAngle = 0;
+	//EnemyTyPE
 	enum EnemyType {TANK,BASE,NOTHING};
 	EnemyType enemyType = NOTHING;
 	bool tankenDamageRecently = false;
