@@ -68,10 +68,6 @@ void Node::setColumn(int column)
 	this->column = column;
 }
 
-int Node::lowerOutcome(const Node other) const
-{
-	return 0;
-}
 
 float Node::getFScore() const
 {
@@ -128,19 +124,20 @@ void Node::setDiagonal(bool diagonal)
 {
 	this->diagonal = diagonal;
 }
-bool Node::equals(Node *otherNode)
+bool Node::equals(Node &otherNode)
 {
-	return (row == otherNode->getRow() && column == otherNode->getColumn());
+	return (row == otherNode.getRow() && column == otherNode.getColumn());
 }
 
 void Node::calcuate_G(float parentGScore) {
-
-	diagonal ? g = parentGScore + 1.414f : parentGScore + 1.0f;
+	//Add 1.414 to cost if the
+	diagonal ? g = parentGScore + 1.414f :g = parentGScore + 1.0f;
+	
 }
 
-void Node::calculate_H(Node* goalNode) {
-	int goalX = goalNode->getX();
-	int goalY = goalNode->getY();
+void Node::calculate_H(Node &goalNode) {
+	int goalX = goalNode.getX();
+	int goalY = goalNode.getY();
 	float dx, dy;
 	//Calculate distance between current node and goal node 
 	dx = (float)(goalX - xPos);

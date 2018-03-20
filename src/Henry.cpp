@@ -4,6 +4,7 @@
 
 Henry::Henry()
 {
+	map = new Map();
 	clearMovement();
 }
 
@@ -18,17 +19,21 @@ void Henry::move()
 	{
  		goBackward();
 	}
+	setCurrentNode();
 	turretAimMachine();
 	turretfiringMachine();
+	pathFindingMachine();
 	tankMachine();
 }
 
 void Henry::reset()
 {
+	path.clear(); //clear the old path 
 }
 
 void Henry::collided()
 {
+
 }
 
 void Henry::markTarget(Position p)
@@ -75,7 +80,14 @@ void Henry::markEnemy(Position p)
 	targetRotationAngle = angleBetweeThisAndTarget + 180;
 
 }
-
+void Henry::setCurrentNode() {
+	float x = getX() - 17.5f;
+	float y = getY() - 17.5f;
+	int mx = (x / 35);
+	int my = (y / 35);
+	currentNode = map->mapArray[mx][my];
+	int ma = 1;
+}
 void Henry::turretAimMachine()
 {
 	if (turretAimState == DETECTION&&detectedEnemy)
@@ -167,6 +179,28 @@ void Henry::turretfiringMachine()
 }
 void Henry::tankMachine()
 {
+	if (path.size() != 0) { // go through the A* path
+		targetNode = &path.front();
+		if (targetNode->equals(*currentNode)) {
+			path.pop_front();
+			if (path.size() != 0) {
+				targetNode = &path.front();
+			}
+		}
+	}
+	float deltaX = getX() - targetNode->getX();
+	float deltaY = getY() - targetNode->getY();
+	float angleInDegree = atan2(deltaY, deltaX) * 180 / PI;
+	float neededAngle = angleInDegree + 180;
+	float rotational = pos.getTh();
+	float deltaR = rotational - neededAngle;
+
+	//Local Variables
+	int distanceThreshold = 5;
+	int directionThreshold = 5;
+	bool facingDirection = (deltaR < directionThreshold && deltaR > -directionThreshold);
+	bool reachesGoal = (path.size() == 0);
+	int direction;
 	//if (tankMovementState==ROTATE&&tankFacingDirection== angleBetweeThisAndTarget)
 	//{
 	//	tankMovementState = MOVINGTOWARD;
@@ -186,11 +220,29 @@ void Henry::tankMachine()
 	{
 		tankMovementState = DODGESHELL;
 	}
+	if (tankMovementState = IDLE )
+	{
+
+	}
 	switch (tankMovementState)
 	{
 	case ROTATE:
-		break;
+	{//handles which direction the tank is facing depending on the position of the next node
+		if (deltaR > 1 && deltaR < 180) {
+			goLeft();
+		}
+		else if (deltaR < -1 && deltaR > -180) {
+			goRight();
+		}
+		else if (deltaR > 180) {
+			goRight();
+		}
+		else if (deltaR < -180) {
+			goLeft();
+		}
+	} break;
 	case MOVINGTOWARD:
+		forward = true;
 		break;
 	case IDLE:
 		ShellDetectedTimer = 0;
@@ -205,12 +257,12 @@ void Henry::tankMachine()
 			if (distanceBetweenThisAndTarget < 119)
 			{
 				ShellDetectedTimer++;
-				if (bearingDegrees >181)
+				if (bearingDegrees <179)
 				{
 					backward = false;
 					forward = true;
 				}
-				if (bearingDegrees <179)
+				if (bearingDegrees >180)
 				{
 					backward = true;
 					forward = false;
@@ -231,7 +283,23 @@ void Henry::tankMachine()
 	}
 
 }
-
+void Henry::pathFindingMachine() {
+	switch (pathFindingState)
+	{
+	case MOVETOCENTRE:
+	{
+		int centreX = 8;
+		int centreY = 10;
+		if (map->AStar(*currentNode, *map->mapArray[centreX][centreY]))
+		{
+			path = map->getPath();
+		}
+	}
+			break;
+	default:
+		break;
+	}
+}
 bool Henry::isFiring()
 {
 	return firing;

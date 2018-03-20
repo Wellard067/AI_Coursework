@@ -25,39 +25,43 @@ Map::~Map()
 {
 }
 
-bool Map::AStar(std::list<Node*>& path, Node &start, Node &goal)
+bool Map::AStar(Node start, Node goal)
 {
-	list<Node*> open;// List of open nodes to be explored
-	list<Node*> closed;// List of closed nodes which have been explored
+	list<Node> open;// List of open nodes to be explored
+	list<Node> closed;// List of closed nodes which have been explored
 	closed.empty();
-	Node *current_node = &start;
-	Node *goal_node = &goal;
-	current_node->setParentIndex(-1);
-	current_node->setGScore(0);
+	Node current_node = start;
+	Node goal_node =  goal;
+	current_node.setParentIndex(-1);
+	current_node.setGScore(0);
 	//Calculate all three scores , f, g, h
-	current_node->calculate_H(goal_node);
-	current_node->calcuate_G(current_node->getGScore());
-	current_node->calculate_F();
+	current_node.calculate_H(goal_node);
+	current_node.calcuate_G(current_node.getGScore());
+	current_node.calculate_F();
 	open.push_back(current_node);
 	while (!open.empty())
 	{
-		//sort open list using lambda as a comparision function
-		open.sort([](const Node *one, const Node * two) {return one->getFScore() < two->getFScore(); });
+		//sort open list using lambda as a comparision function, node with the lowest F score will be the first element in the open list
+		open.sort([](const Node &one, const Node & two) {return one.getFScore() < two.getFScore(); });
 		//Remove node with smallest score from the openlist
 		current_node = open.front();
 		open.pop_front();
-		if (current_node->equals(goal_node))
+		//If the current node reaches the goal node
+		if (current_node.equals(goal_node))
 		{
-			path = construct_path(path, closed, &goal);//if the current node  has reached the goal then return path
+			//Clear the previous path
+			path.clear();
+			//Construct the path using closed list
+			construct_path(closed, &goal);
 			return true;
 		}
 		else
 		{
 			closed.push_back(current_node);
 		}
-		list<Node*>::iterator closedIterator;
-		list<Node*>::iterator openIterator;
-		for (Node* neighbourNode:getNeighbours(current_node))
+		list<Node>::iterator closedIterator;
+		list<Node>::iterator openIterator;
+		for (Node* &neighbourNode: getNeighbours(&current_node))
 		{
 			bool nodeInClosed = false;
 			for (closedIterator = closed.begin(); closedIterator != closed.end();++closedIterator)
@@ -67,10 +71,12 @@ bool Map::AStar(std::list<Node*>& path, Node &start, Node &goal)
 					nodeInClosed = true;
 				}
 			}
+			//If the neighbourNode is not in the closed list
 			if (!nodeInClosed)
 			{
-				neighbourNode->calcuate_G(current_node->getGScore());
+				//Calculate all three scores , f, g, h for neighbourNode
 				neighbourNode->calculate_H(goal_node);
+				neighbourNode->calcuate_G(current_node.getGScore());
 				neighbourNode->calculate_F();
 				bool nodeInOpen = false;
 				for (openIterator = open.begin(); openIterator != open.end(); ++openIterator)
@@ -82,7 +88,7 @@ bool Map::AStar(std::list<Node*>& path, Node &start, Node &goal)
 				//if the node is not in open list
 				if (!nodeInOpen)
 				{
-					open.push_back(neighbourNode);
+					open.push_back(*neighbourNode);
 					mapArray[neighbourNode->getRow()][neighbourNode->getColumn()]->setClosed();
 				}
 				else
@@ -98,7 +104,7 @@ bool Map::AStar(std::list<Node*>& path, Node &start, Node &goal)
 	}
 	return false;
 }
-std::vector<Node*> Map::getNeighbours(Node * node)
+vector<Node*> Map::getNeighbours(Node *node)
 {
 	//This is where the program works out all the neighbours node are located
 	int current_node_index = node->getIndex();
@@ -127,57 +133,50 @@ std::vector<Node*> Map::getNeighbours(Node * node)
 	neighbors.push_back(bottom_left_neighbor);
 	neighbors.push_back(bottom_neighbor);
 	neighbors.push_back(bottom_right_neighbor);
-	//If the current node is on most left hand side row
+	//Check if left nodes are traversable 
 	if (current_node_row-1<0)
 	{
-		neighbors[top_left].setExists(false);
-		neighbors[left].setExists(false);
-		neighbors[bottom_left].setExists(false);
+		neighbors[top_left].setTraversable(false);
+		neighbors[left].setTraversable(false);
+		neighbors[bottom_left].setTraversable(false);
 	}
-	//If the current node is on the most top column
+	//Check if top nodes are traversable 
 	if (current_node_column-1<0)
 	{
-		neighbors[top_left].setExists(false);
-		neighbors[top].setExists(false);
-		neighbors[top_right].setExists(false);
+		neighbors[top_left].setTraversable(false);
+		neighbors[top].setTraversable(false);
+		neighbors[top_right].setTraversable(false);
 	}
-	//If the current node is on the most right hand side row
+	//Check if right nodes are traversable 
 	if (current_node_row + 1 > this->rows)
 	{
-		neighbors[top_right].setExists(false);
-		neighbors[right].setExists(false);
-		neighbors[bottom_right].setExists(false);
+		neighbors[top_right].setTraversable(false);
+		neighbors[right].setTraversable(false);
+		neighbors[bottom_right].setTraversable(false);
 	}
-	//If the current node is on the most bottom column
+	//Check if bottom nodes are traversable 
 	if (current_node_column + 1 > this->columns)
 	{
-		neighbors[bottom_right].setExists(false);
-		neighbors[bottom].setExists(false);
-		neighbors[bottom_right].setExists(false);
+		neighbors[bottom_right].setTraversable(false);
+		neighbors[bottom].setTraversable(false);
+		neighbors[bottom_right].setTraversable(false);
 	}
 	std::vector<Node*> neighbourNodes;
-	std::vector<bool> diagonals;
 	for (Neighbor n:neighbors)
 	{
-		if (n.isExists())
+		if (n.isTraversable())
 		{
 			neighbourNodes.push_back(mapArray[n.getRow()][n.getColumns()]);		
 			neighbourNodes.front()->setDiagonal(n.isDiagonal());
 		}
 	}
-	//Set parentIndex
-	for (Node* neigNode : neighbourNodes)
-	{
-		neigNode->setParentIndex(node->getIndex());
-	}
 	return neighbourNodes;
 }
-std::list<Node*> Map::construct_path(std::list<Node*>& path, std::list<Node*>& closed, Node* node) {
-	std::list<Node*>::iterator graphListIter;
-
+void Map::construct_path(list<Node>& closed, Node* node) {
+	list<Node>::iterator graphListIter;
 	Node* currentNode = node; // Set the current node to goal node
-	path.push_front(currentNode); // Add the current node the the start of the path
-	closed.pop_back(); // Remove the curretn node from the closed list
+	path.push_front(*currentNode); // Add the current node the the start of the path
+	closed.pop_back(); // Remove the current node from the closed list
 					   //Now work backwards throught the closed list reconstructing the path
 	for (graphListIter = closed.end(), graphListIter--; graphListIter != closed.begin(); --graphListIter)
 	{
@@ -188,5 +187,9 @@ std::list<Node*> Map::construct_path(std::list<Node*>& path, std::list<Node*>& c
 		// Start working backward throguht the cloased list again from the end
 		graphListIter = closed.end();
 	}
+}
+
+list<Node> Map::getPath()
+{
 	return path;
 }

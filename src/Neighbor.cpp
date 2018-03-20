@@ -6,21 +6,21 @@ Neighbor::Neighbor(int row, int columns, bool diagonal)
 	this->row = row;
 	this->columns = columns;
 	this->diagonal = diagonal;
-	this->exists = true;
+	this->traversable = true;
 }
 
 Neighbor::~Neighbor()
 {
 }
 
-void Neighbor::setExists(bool exists)
+void Neighbor::setTraversable(bool exists)
 {
-	this->exists = exists;
+	this->traversable = exists;
 }
 
-bool Neighbor::isExists()
+bool Neighbor::isTraversable()
 {
-	return exists;
+	return traversable;
 }
 int Neighbor::getRow()
 {
