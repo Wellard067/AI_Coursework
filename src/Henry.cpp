@@ -51,6 +51,39 @@ void Henry::markTarget(Position p)
 
 void Henry::markBase(Position p)
 {
+	float x = p.getX() - 17.5f;
+	float y = p.getY() - 17.5f;
+	int mx = (x / 35);
+	int my = (y / 35);
+	for (int i = -1; i < 2; i++)
+	{
+		if (mx + i < 22 && mx + i >0)
+		{
+			for (int j = -1; j < 2; j++)
+			{
+				if (my + j < 16 && my + j>0)
+				{
+					map->mapArray[my + j][mx + i]->setWall();
+				}
+			}
+		}
+	}
+	float dx = (float)(p.getX() - getX());
+	float dy = (float)(p.getY() - getY());
+	distanceBetweenThisAndTarget = sqrt(dx*dx + dy*dy);
+	if (distanceBetweenThisAndTarget < safeDistance)
+	{
+		if (amountReconstrctedPath < 5)
+		{
+			cout << "Reset path" << endl;
+			foundPath = false;
+			amountReconstrctedPath++;
+		}
+	}
+	else
+	{
+		amountReconstrctedPath = 0;
+	}
 	//std::cout << "Base spotted at (" << p.getX() << ", " << p.getY() << ")\n";
 }
 
@@ -85,7 +118,7 @@ void Henry::setCurrentNode() {
 	float y = getY() - 17.5f;
 	int mx = (x / 35);
 	int my = (y / 35);
-	currentNode = map->mapArray[mx][my];
+	currentNode = map->mapArray[my][mx];
 	int ma = 1;
 }
 void Henry::turretAimMachine()
@@ -177,17 +210,22 @@ void Henry::turretfiringMachine()
 		break;
 	}
 }
+
 void Henry::tankMachine()
 {
+	tankMovementState = IDLE;
 	if (path.size() != 0) { // go through the A* path
 		targetNode = &path.front();
 		if (targetNode->equals(*currentNode)) {
+			cout << "Reached: " << targetNode->getRow() << " " << targetNode->getColumn() << endl;
 			path.pop_front();
 			if (path.size() != 0) {
-				targetNode = &path.front();
+			targetNode = &path.front();
 			}
 		}
 	}
+
+	//Local Variables
 	float deltaX = getX() - targetNode->getX();
 	float deltaY = getY() - targetNode->getY();
 	float angleInDegree = atan2(deltaY, deltaX) * 180 / PI;
@@ -195,34 +233,33 @@ void Henry::tankMachine()
 	float rotational = pos.getTh();
 	float deltaR = rotational - neededAngle;
 
-	//Local Variables
 	int distanceThreshold = 5;
 	int directionThreshold = 5;
 	bool facingDirection = (deltaR < directionThreshold && deltaR > -directionThreshold);
 	bool reachesGoal = (path.size() == 0);
-	int direction;
-	//if (tankMovementState==ROTATE&&tankFacingDirection== angleBetweeThisAndTarget)
-	//{
-	//	tankMovementState = MOVINGTOWARD;
-	//}
-	//if (tankMovementState == MOVINGTOWARD&&distanceBetweenThisAndTarget<safeDistance)
-	//{
-	//	tankMovementState = IDLE;
-	//}
-	//if (tankMovementState == IDLE&&enemyIsDead)
-	//{
-	//}
-	if (tankMovementState == MOVINGTOWARD && getNumberOfShells()<=0)
-	{
-		tankMovementState = RUNAWAY;
-	}
-	if (tankMovementState == IDLE && detectedShell) 
-	{
-		tankMovementState = DODGESHELL;
-	}
-	if (tankMovementState = IDLE )
-	{
 
+	if (tankMovementState == IDLE)
+	{
+		if (facingDirection && !reachesGoal) {
+			tankMovementState = MOVINGTOWARD;
+		}
+		else if (!facingDirection && !reachesGoal) {
+			tankMovementState = ROTATE;
+		}
+	}
+	else if (tankMovementState == MOVINGTOWARD)
+	{
+		if (reachesGoal)
+		{
+			tankMovementState = IDLE;
+		}
+	}
+	else if (tankMovementState == ROTATE)
+	{
+		if (facingDirection)
+		{
+			tankMovementState = MOVINGTOWARD;
+		}
 	}
 	switch (tankMovementState)
 	{
@@ -242,16 +279,20 @@ void Henry::tankMachine()
 		}
 	} break;
 	case MOVINGTOWARD:
-		forward = true;
+	{
+		goForward();
+	}
 		break;
 	case IDLE:
+	{
+		stop();
 		ShellDetectedTimer = 0;
+	}
 		break;
 	case RUNAWAY:
 		break;
 	case DODGESHELL:
 	{
-
 		if (ShellDetectedTimer < 50)
 		{
 			if (distanceBetweenThisAndTarget < 119)
@@ -284,15 +325,28 @@ void Henry::tankMachine()
 
 }
 void Henry::pathFindingMachine() {
+	//if (pathFindingState == MOVETOCENTRE&&foundPath)
+	//{
+	//	pathFindingState = STAND;
+	//}
 	switch (pathFindingState)
 	{
+	case STAND:
+	{
+
+	}
+		break;
 	case MOVETOCENTRE:
 	{
 		int centreX = 8;
 		int centreY = 10;
-		if (map->AStar(*currentNode, *map->mapArray[centreX][centreY]))
+		while (!foundPath)
 		{
-			path = map->getPath();
+			if (map->AStar(*currentNode, *map->mapArray[centreX][centreY]))
+			{
+				foundPath = true;
+				path = map->getPath();
+			}
 		}
 	}
 			break;

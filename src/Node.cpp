@@ -11,6 +11,16 @@ Node::Node(int xPosIn,int yPosIn, int heightIn, int widthIn, int r, int c)
 	current = false;
 	neighborToCurrentNode = false;
 	diagonal = false;
+	traversable = true;
+	//set the size, position and color of the nodes
+	rect.setSize(sf::Vector2f(width, height));
+	rect.setPosition(sf::Vector2f(xPos, yPos));
+	rect.setFillColor(sf::Color(255, 255, 255, 50));
+	rect.setOutlineThickness(1);
+	rect.setOutlineColor(sf::Color(255, 255, 255, 100));
+}
+void Node::DrawNode(sf::RenderTarget &target) {
+	target.draw(rect);
 }
 
 Node::~Node()
@@ -29,12 +39,17 @@ int Node::getY()
 
 void Node::setWall()
 {
-	path = false;
+	traversable = false;
 }
 
 void Node::setPath()
 {
-	path = true;
+	traversable = true;
+	rect.setFillColor(sf::Color(100, 255, 255, 50));
+}
+bool Node::isTraversable()
+{
+	return traversable;
 }
 
 void Node::setGoal()
@@ -84,6 +99,7 @@ float Node::getHScore()
 	return h;
 }
 
+
 int Node::getRow()
 {
 	return row;
@@ -131,18 +147,36 @@ bool Node::equals(Node &otherNode)
 
 void Node::calcuate_G(float parentGScore) {
 	//Add 1.414 to cost if the
-	diagonal ? g = parentGScore + 1.414f :g = parentGScore + 1.0f;
-	
+	if (firstTimeCalG)
+	{
+		diagonal ? g = parentGScore + 1.414f : g = parentGScore + 1.0f;
+		diagonal ? new_g = parentGScore + 1.414f : new_g = parentGScore + 1.0f;
+		firstTimeCalG = false;
+	}
+	else
+	{
+		diagonal ? new_g = parentGScore + 1.414f : new_g = parentGScore + 1.0f;
+		//std::cout << " Node Row :" << row << " Node Col :" << column << " G Score : " << g << " New G Score" << new_g << std::endl;
+	}
 }
 
+void Node::improveG()
+{
+	this->g = new_g;
+}
+bool Node::canImproveG()
+{
+	return g >= new_g;
+}
 void Node::calculate_H(Node &goalNode) {
 	int goalX = goalNode.getX();
 	int goalY = goalNode.getY();
 	float dx, dy;
 	//Calculate distance between current node and goal node 
 	dx = (float)(goalX - xPos);
-	dy = (float)(goalX - yPos);
+	dy = (float)(goalY - yPos);
 	h = sqrt(dx*dx + dy*dy);
+	
 }
 
 void Node::calculate_F()

@@ -13,13 +13,13 @@ Map::Map()
 		}
 	}
 }
-//void Map::DrawMap(sf::RenderTarget &target) {
-//	for (int i = 0; i < 22; i++) {
-//		for (int j = 0; j < 16; j++) {
-//			mapArray[j][i]->DrawNode(target);
-//		}
-//	}
-//}
+void Map::DrawMap(sf::RenderTarget &target) {
+	for (int i = 0; i < 22; i++) {
+		for (int j = 0; j < 16; j++) {
+			mapArray[j][i]->DrawNode(target);
+		}
+	}
+}
 
 Map::~Map()
 {
@@ -27,25 +27,30 @@ Map::~Map()
 
 bool Map::AStar(Node start, Node goal)
 {
-	list<Node> open;// List of open nodes to be explored
+	list<Node*> open;// List of open nodes to be explored
 	list<Node> closed;// List of closed nodes which have been explored
 	closed.empty();
 	Node current_node = start;
 	Node goal_node =  goal;
+	if (current_node.equals(goal_node))
+	{
+		return false;
+	}
 	current_node.setParentIndex(-1);
 	current_node.setGScore(0);
 	//Calculate all three scores , f, g, h
 	current_node.calculate_H(goal_node);
 	current_node.calcuate_G(current_node.getGScore());
 	current_node.calculate_F();
-	open.push_back(current_node);
+	cout << "Start Node : (" << start.getRow() << " " << start.getColumn() << ")" << endl;
+	open.push_back(&current_node);
 	while (!open.empty())
 	{
 		//sort open list using lambda as a comparision function, node with the lowest F score will be the first element in the open list
-		open.sort([](const Node &one, const Node & two) {return one.getFScore() < two.getFScore(); });
-		//Remove node with smallest score from the openlist
-		current_node = open.front();
-		open.pop_front();
+		open.sort([](const Node *one, const Node * two) {return one->getFScore() < two->getFScore(); });
+		current_node = *open.front();
+		//cout << "Current node:(" << current_node.getRow() << ") (" << current_node.getColumn()<<") " << endl;
+		//cout << "G Score:" << current_node.getGScore() << " H Score" << current_node.getHScore() << " F Score:" << current_node.getFScore()<<endl;
 		//If the current node reaches the goal node
 		if (current_node.equals(goal_node))
 		{
@@ -53,14 +58,14 @@ bool Map::AStar(Node start, Node goal)
 			path.clear();
 			//Construct the path using closed list
 			construct_path(closed, &goal);
+			cout << "Goal Node : (" << goal.getRow() << " " << goal.getColumn() << ")" << endl;
 			return true;
 		}
-		else
-		{
-			closed.push_back(current_node);
-		}
+		//Remove node with smallest score from the openlist
+		open.pop_front();
+		closed.push_back(current_node);
 		list<Node>::iterator closedIterator;
-		list<Node>::iterator openIterator;
+		list<Node*>::iterator openIterator;
 		for (Node* &neighbourNode: getNeighbours(&current_node))
 		{
 			bool nodeInClosed = false;
@@ -74,34 +79,35 @@ bool Map::AStar(Node start, Node goal)
 			//If the neighbourNode is not in the closed list
 			if (!nodeInClosed)
 			{
-				//Calculate all three scores , f, g, h for neighbourNode
-				neighbourNode->calculate_H(goal_node);
-				neighbourNode->calcuate_G(current_node.getGScore());
-				neighbourNode->calculate_F();
 				bool nodeInOpen = false;
 				for (openIterator = open.begin(); openIterator != open.end(); ++openIterator)
 				{
-					if (neighbourNode->equals(*openIterator)) {
+					if (neighbourNode->equals(**openIterator)) {
 						nodeInOpen = true;
 					}
 				}
+				//Calculate all three scores , g, h for neighbourNode
+				neighbourNode->calculate_H(goal_node);
+				neighbourNode->calcuate_G(current_node.getGScore());
 				//if the node is not in open list
 				if (!nodeInOpen)
 				{
-					open.push_back(*neighbourNode);
+					open.push_back(neighbourNode);
 					mapArray[neighbourNode->getRow()][neighbourNode->getColumn()]->setClosed();
 				}
 				else
 				{
-					Node* openNeighbour = neighbourNode;
-					if (neighbourNode->getGScore() < openNeighbour->getGScore()) {
-						//Update the g score
-						openNeighbour->setGScore(openNeighbour->getGScore());
+					//Check if the G score can be improve
+					if (neighbourNode->canImproveG())
+					{
+						neighbourNode->improveG();
 					}
 				}
+				neighbourNode->calculate_F();
 			}
 		}
 	}
+
 	return false;
 }
 vector<Node*> Map::getNeighbours(Node *node)
@@ -124,6 +130,8 @@ vector<Node*> Map::getNeighbours(Node *node)
 	Neighbor bottom_left_neighbor(current_node_row-1 , current_node_column + 1, true);
 	Neighbor bottom_neighbor(current_node_row, current_node_column + 1, false);
 	Neighbor bottom_right_neighbor(current_node_row + 1, current_node_column + 1, true);
+
+
 	vector<Neighbor> neighbors;
 	neighbors.push_back(top_left_neighbor);
 	neighbors.push_back(top_neighbor);
@@ -166,8 +174,15 @@ vector<Node*> Map::getNeighbours(Node *node)
 	{
 		if (n.isTraversable())
 		{
-			neighbourNodes.push_back(mapArray[n.getRow()][n.getColumns()]);		
-			neighbourNodes.front()->setDiagonal(n.isDiagonal());
+			if (mapArray[n.getRow()][n.getColumns()]->isTraversable())
+			{
+				neighbourNodes.push_back(mapArray[n.getRow()][n.getColumns()]);
+				neighbourNodes.back()->setDiagonal(n.isDiagonal());
+			}
+			else
+			{
+				cout << "Not traverable " << n.getRow() <<" "<< n.getColumns() << endl;
+			}
 		}
 	}
 	return neighbourNodes;
@@ -176,16 +191,18 @@ void Map::construct_path(list<Node>& closed, Node* node) {
 	list<Node>::iterator graphListIter;
 	Node* currentNode = node; // Set the current node to goal node
 	path.push_front(*currentNode); // Add the current node the the start of the path
-	closed.pop_back(); // Remove the current node from the closed list
 					   //Now work backwards throught the closed list reconstructing the path
 	for (graphListIter = closed.end(), graphListIter--; graphListIter != closed.begin(); --graphListIter)
 	{
-		// Add it to the path
 		path.push_front(*graphListIter);
 		// Remove this node from the closed list
 		closed.erase(graphListIter);
 		// Start working backward throguht the cloased list again from the end
 		graphListIter = closed.end();
+	}
+	for (Node n:path )
+	{
+		cout << n.getRow() << " " << n.getColumn() << endl;
 	}
 }
 
@@ -193,3 +210,4 @@ list<Node> Map::getPath()
 {
 	return path;
 }
+
