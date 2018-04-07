@@ -1,5 +1,7 @@
 #pragma once
 #include <cmath>
+#include <SFML/Graphics.hpp>
+#include <iostream>
 class Node
 {
 private:
@@ -16,23 +18,28 @@ private:
 	int column;
 	bool neighborToCurrentNode;
 	bool diagonal;
+	//Using SFML to draw the nodes
+	sf::RectangleShape rect;
+	float new_g;
+	float old_g;
+	bool firstTimeCalG;
+	bool traversable;
 public:
 	Node(int xPosIn, int yPosin, int heightIn, int widthIn, int r, int c);
+	void DrawNode(sf::RenderTarget & target);
 	~Node();
 	bool current = true;
-	bool notPath = false;
-	bool path = true;
 	int getX();
 	int getY();
-	
+	//Drawing
 	void setWall();
 	void setPath();
+
 	void setGoal();
 	void setStart();
 	void setOpen();
 	void setClosed();
 
-	int lowerOutcome(const Node other) const;
 	//setter
 	void setCurrent(bool current);
 	void setRow(int row);
@@ -40,7 +47,8 @@ public:
 	void setParentIndex(float value);
 	void setGScore(float value);
 	void setIndex(int index);
-	void setDiagonal(bool diagonal);
+	void setDiagonal(bool diagonal);	
+	bool isTraversable();
 	//getter
 	float getFScore() const;
 	float getGScore();
@@ -50,10 +58,11 @@ public:
 	int getIndex();
 	bool isDiagonal();
 	//calculation
-	void calculate_H(Node* goalNode);
+	bool equals(Node &otherNode);
 	void calculate_F();
-	void calculate_Score(float parentGScore, Node * goalNode);
-	bool equals(Node * otherNode);
 	void calcuate_G(float parentGScore);
+	void improveG();
+	bool canImproveG();
+	void calculate_H(Node &goalNode);
 };
 

@@ -5,6 +5,8 @@
 #include <list>
 #include <vector>
 #include <algorithm>
+#include <iostream>
+using namespace std;
 class Map
 {
 private:
@@ -17,12 +19,15 @@ private:
 	static const short unsigned map_height = 570;
 	int xBuffer = 15;
 	int yBuffer = 10;
+	list<Node> path;
 public:
 	Map();
+	void DrawMap(sf::RenderTarget & target);
 	~Map();
 	Node* mapArray[rows][columns];
-	bool AStar(std::list<Node*>& path,Node &start, Node &goal);
-	std::vector<Node*> getNeighbours(Node * node);
-	std::list<Node*> construct_path(std::list<Node*>& path, std::list<Node*>& closed, Node * node);
+	bool AStar(Node start, Node goal);
+	vector<Node*> getNeighbours(Node * node);
+	void construct_path(std::list<Node>& closed, Node * node);
+	list<Node> getPath();
 };
 

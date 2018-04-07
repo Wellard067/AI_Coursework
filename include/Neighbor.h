@@ -5,12 +5,12 @@ private:
 	int row;
 	int columns;
 	bool diagonal;
-	bool exists;
+	bool traversable;
 public:
 	Neighbor(int row, int columns, bool diagonal);
 	~Neighbor();
-	void setExists(bool exists);
-	bool isExists();
+	void setTraversable(bool exists);
+	bool isTraversable();
 	int getRow();
 	int getColumns();
 	bool isDiagonal();

@@ -1,7 +1,8 @@
 #pragma once
 #include<iostream>
 #include "aitank.h"
-
+#include "Map.h"
+#include "Node.h"
 class Henry : public AITank 
 {
 public:
@@ -14,19 +15,27 @@ public:
 	void markBase(Position p);
 	void markShell(Position p);
 	void markEnemy(Position p);
+	void setCurrentNode();
 	void turretAimMachine();
 	void turretfiringMachine();
+	float angleNeeded();
 	void tankMachine();
+	void pathFindingMachine();
 	bool isFiring();
 	void score(int thisScore, int enemyScore);
-
+	Map* map;
 private:
+	Node* currentNode;
+	Node* targetNode;
+	std::list<Node> path;
 	enum TurretAimState { AIM, DETECTION, NOAMMO };
 	TurretAimState turretAimState = DETECTION;
 	enum TurretFiringState { SHOOTINGBASE, SHOOTINGTANK,LOOKINGFORTARGET};
 	TurretFiringState turretFiringState = LOOKINGFORTARGET;
 	enum TankMovementState { ROTATE, MOVINGTOWARD, IDLE, RUNAWAY,DODGESHELL };
 	TankMovementState tankMovementState = IDLE;
+	enum PathFindingState {STAND,MOVETOCENTRE};
+	PathFindingState pathFindingState = MOVETOCENTRE;
 	bool firing = false;
 	bool detectedEnemy = false;
 	bool detectedShell = false;
@@ -43,9 +52,11 @@ private:
 	bool detectingEnemy = true;
 	//tankMachine variables
 	float distanceBetweenThisAndTarget = 0;
-	float safeDistance = 120.f;
+	float safeDistance = 80.0f;
 	float tankFacingDirection = 0;
 	bool turretHasTargetLocked = false;
 	int bearingDegrees = 0;
+	bool foundPath = false;
+	int amountReconstrctedPath = 0;
 };
 
