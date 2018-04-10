@@ -1,6 +1,6 @@
 #include "Node.h"
 
-Node::Node(int xPosIn,int yPosIn, int heightIn, int widthIn, int r, int c)
+Node::Node(float xPosIn, float yPosIn, float heightIn, float widthIn, int r, int c)
 {
 	xPos = xPosIn;
 	yPos = yPosIn;
@@ -40,12 +40,13 @@ int Node::getY()
 void Node::setWall()
 {
 	traversable = false;
+	rect.setFillColor(sf::Color(100, 255, 255, 50));
 }
 
 void Node::setPath()
 {
 	traversable = true;
-	rect.setFillColor(sf::Color(100, 255, 255, 50));
+	rect.setFillColor(sf::Color(255, 255, 255, 50));
 }
 bool Node::isTraversable()
 {
@@ -62,10 +63,12 @@ void Node::setStart()
 
 void Node::setOpen()
 {
+	rect.setFillColor(sf::Color(200, 100,100, 50));
 }
 
 void Node::setClosed()
 {
+	rect.setFillColor(sf::Color(100, 150,150, 50));
 }
 
 void Node::setCurrent(bool current)
