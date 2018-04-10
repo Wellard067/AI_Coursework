@@ -25,7 +25,8 @@ private:
 	bool firstTimeCalG;
 	bool traversable;
 public:
-	Node(int xPosIn, int yPosin, int heightIn, int widthIn, int r, int c);
+	//Node(int xPosIn, int yPosin, int heightIn, int widthIn, int r, int c);
+	Node(float xPosIn, float yPosIn, float heightIn, float widthIn, int r, int c);
 	void DrawNode(sf::RenderTarget & target);
 	~Node();
 	bool current = true;
