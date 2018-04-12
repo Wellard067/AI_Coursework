@@ -44,7 +44,6 @@ void Henry::move()
 	}
 	//calculate which node the tank is on based on x and y position of the tank
 	setCurrentNode();
-	friendlyBaseSpotted = false;
 	turretAimMachine();
 	turretfiringMachine();
 	pathFindingMachine();
@@ -53,6 +52,7 @@ void Henry::move()
 	{
 		coliisionTimer++;
 	}
+	facingFrendlyBase = false;
 }
 
 void Henry::reset()
@@ -69,15 +69,15 @@ void Henry::markTarget(Position p)
 {
 	detectedEnemy = true;
 	enemyType = BASE;
-	enemyBaseDistance = getDistance(p);
+	enemyBaseDistance = calculateDistance(p);
 	targetRotationAngle = calculateNeededAngle(p);
 }
 
 void Henry::markBase(Position p)
 {
-	friendlyBaseSpotted = true;
 	markNodeAsNotTraversable(p);
-	friendlyBaseDistance = getDistance(p);
+	friendlyBaseDistance = calculateDistance(p);
+	friendlyBaseAngle = calculateNeededAngle(p);
 	if (reachedFinalGoal)
 	{
 		amountReconstrctedPath = 0;
@@ -92,16 +92,27 @@ void Henry::markBase(Position p)
 		}
 		amountReconstrctedPath++;
 	}
+	float friendlyBaseDeltaR = turretTh - friendlyBaseAngle;
+	if (friendlyBaseDeltaR > 25 && friendlyBaseDeltaR < 180) {
+		facingFrendlyBase = false;
+	}
+	else if (friendlyBaseDeltaR < -25 && friendlyBaseDeltaR > -180) {
+		facingFrendlyBase = false;
+	}
+	else if (friendlyBaseDeltaR > 180) {
+		facingFrendlyBase = false;
+	}
+	else if (friendlyBaseDeltaR < -180) {
+		facingFrendlyBase = false;
+	}
+	else
+	{
+		facingFrendlyBase = true;
+	}
+	cout << facingFrendlyBase << endl;
 }
-
 void Henry::markShell(Position p)
 {
-	detectedShell = true;
-	bearingDegrees = calculateNeededAngle(p);
-	foundPath = false;
-	shellX = (p.getX()/35);
-	shellY = (p.getY()/35);
-	cout << "Shell spotted at (" << shellX << ", " << shellY << endl;
 }
 void Henry::markEnemy(Position p)
 {
@@ -109,15 +120,16 @@ void Henry::markEnemy(Position p)
 	enemyType = TANK;
 	targetRotationAngle = calculateNeededAngle(p);
 }
-
-float Henry::getDistance(Position p)
+//calculate the distance between AI tank and target
+float Henry::calculateDistance(Position p)
 {
 	float dx = (float)(p.getX() - getX());
 	float dy = (float)(p.getY() - getY());
 	friendlyBaseDistance = sqrt(dx*dx + dy*dy);
 	return friendlyBaseDistance;
 }
-float Henry::calculateDeltaR(Node *targetNode)
+
+float Henry::calculateTankDeltaR(Node *targetNode)
 {
 	float neededAngle = calculateNeededAngle(targetNode);
 	float rotational = pos.getTh();
@@ -175,7 +187,7 @@ void Henry::turretAimMachine()
 	{
 		turretAimState = NOAMMO;
 	}
-	if (turretAimState == DETECTION&&detectedEnemy)
+	if (turretAimState == DETECTION&&detectedEnemy&&!facingFrendlyBase)
 	{
 		turretAimState = AIM;
 	}
@@ -209,29 +221,29 @@ void Henry::runTurretAimStateMachine()
 			//}
 		}
 		float deltaR = turretTh - targetRotationAngle;
-		if (deltaR > 1 && deltaR < 180) {
-			turretGoLeft();
-			turretHasTargetLocked = false;
-		}
-		else if (deltaR < -1 && deltaR > -180) {
-			turretGoRight();
-			turretHasTargetLocked = false;
-		}
-		else if (deltaR > 180) {
-			turretGoRight();
-			turretHasTargetLocked = false;
-		}
-		else if (deltaR < -180) {
-			turretGoLeft();
-			turretHasTargetLocked = false;
-		}
-		else {
-			turretHasTargetLocked = true;
-			detectedEnemy = false;
-			detectingEnemy = false;
-			stopTurret();
-			clearMovement();
-		}
+			if (deltaR > 1 && deltaR < 180) {
+				turretGoLeft();
+				turretHasTargetLocked = false;
+			}
+			else if (deltaR < -1 && deltaR > -180) {
+				turretGoRight();
+				turretHasTargetLocked = false;
+			}
+			else if (deltaR > 180) {
+				turretGoRight();
+				turretHasTargetLocked = false;
+			}
+			else if (deltaR < -180) {
+				turretGoLeft();
+				turretHasTargetLocked = false;
+			}
+			else {
+				turretHasTargetLocked = true;
+				detectedEnemy = false;
+				detectingEnemy = false;
+				stopTurret();
+				clearMovement();
+			}
 		break;
 	}
 	case NOAMMO:
@@ -246,11 +258,15 @@ void Henry::runTurretAimStateMachine()
 }
 void Henry::turretfiringMachine()
 {
-	if (turretFiringState == LOOKING_FOR_TARGET&&turretHasTargetLocked&&!friendlyBaseSpotted)
+	if (turretFiringState == LOOKING_FOR_TARGET&&turretHasTargetLocked&&!facingFrendlyBase)
 	{
 			turretFiringState = SHOOTING;
 	}
-	if ((turretFiringState == SHOOTING)&&detectingEnemy)
+	if (turretFiringState == SHOOTING&&facingFrendlyBase)
+	{
+		turretFiringState = LOOKING_FOR_TARGET;
+	}
+	if (turretFiringState == SHOOTING&&detectingEnemy)
 	{
 		turretFiringState = LOOKING_FOR_TARGET;
 	}
@@ -262,7 +278,7 @@ void Henry::runTurretFiringMachine()
 	{
 	case SHOOTING:
 	{
-		firing = true;
+			firing = true;
 	}
 	break;
 	case LOOKING_FOR_TARGET:
@@ -281,7 +297,7 @@ void Henry::tankMovementMachine()
 	float deltaR = 0;
 	if (targetNodeInitialized)
 	{
-		 deltaR = calculateDeltaR(targetNode);
+		 deltaR = calculateTankDeltaR(targetNode);
 	}
 	int directionThreshold = 7;
 	bool facingDirection = (deltaR < directionThreshold && deltaR > -directionThreshold);
@@ -394,7 +410,7 @@ void Henry::runTankMachine(float deltaR)
 	}
 }
 void Henry::pathFindingMachine() {
-	reachedFinalGoal = tankReachedGoal(finalGoalX, finalGoalY);
+	reachedFinalGoal = tankReachedGoal(goalNodeX, goalNodeY);
 	if (pathFindingState == STAND)
 	{
 		if (!detectedEnemy&&detectingEnemy)
@@ -413,7 +429,7 @@ void Henry::pathFindingMachine() {
 	if (pathFindingState == MOVE_TO_CENTRE&& currentNode->getColumn() == centreY&& currentNode->getRow() == centreX)
 	{
 		foundPath = false;
-		lastLocation = MIDDLE;
+		lastArea = MIDDLE;
 
 	}
 	if (pathFindingState == MOVE_TO_CENTRE && collisionDetected)
@@ -546,8 +562,8 @@ void Henry::runPathFindingMachine()
 	{
 		bool addPreviousX = false;
 		bool addPreviousY = false;
-		int x = randomizeXPosition(lastLocation, addPreviousX);
-		int y = randomizeYPosition(lastLocation, addPreviousY);
+		int x = randomizeXPosition(lastArea, addPreviousX);
+		int y = randomizeYPosition(lastArea, addPreviousY);
 		runAStarPathFinding(y, x);
 	}
 	break;
@@ -560,7 +576,7 @@ void Henry::runPathFindingMachine()
 		break;
 	}
 }
-void Henry::findPathTo(LastLocation destination, PathFindingState whatState) {
+void Henry::findPathTo(LastArea destination, PathFindingState whatState) {
 	bool addPreviousX;
 	bool addPreviousY;
 	switch (whatState)
@@ -601,7 +617,7 @@ void Henry::findPathTo(LastLocation destination, PathFindingState whatState) {
 	runAStarPathFinding(y, x);
 	if (whatState != FINISH_PRE_PATH)
 	{
-		lastLocation = destination;
+		lastArea = destination;
 	}
 }
 //find the shortest path using A star algorithem
@@ -611,8 +627,8 @@ void Henry::runAStarPathFinding(int x,int y)
 	int column = y;
 	while (map->mapArray[row][column]->isTraversable()==false)
 	{
-		(row >= centreX) ? row =+ 1 : row =- 1;
-		(column >= centreY) ? column =+ 1 : column =- 1;
+		(row <= centreX) ? row =+ 1 : row =- 1;
+		(column <= centreY) ? column =+ 1 : column =- 1;
 	}
 	while (!foundPath)
 	{
@@ -621,8 +637,8 @@ void Henry::runAStarPathFinding(int x,int y)
 		{
 			path = aStar->getPath();
 			foundPath = true;
-			finalGoalY = row;
-			finalGoalX = column;
+			goalNodeY = row;
+			goalNodeX = column;
 		}
 	}
 }
@@ -681,7 +697,7 @@ bool Henry::tankReachedGoal(int row, int column)
 	return false;
 }
 //randomize the x position within a given area
-int Henry::randomizeXPosition(LastLocation destination, bool addPrevious)
+int Henry::randomizeXPosition(LastArea destination, bool addPrevious)
 {
 	int nodeColumn = currentNode->getColumn();
 	switch (destination)
@@ -719,7 +735,7 @@ default:
 	}
 	return 0;
 }
-int Henry::randomizeYPosition(LastLocation destination, bool addPrevious)
+int Henry::randomizeYPosition(LastArea destination, bool addPrevious)
 {
 	int nodeRow = currentNode->getRow();
 	switch (destination)
