@@ -22,13 +22,14 @@ bool AStar::pathExists(Node start, Node goal)
 	{
 		return false;
 	}
-	current_node.setParentIndex(-1);
+	//
 	current_node.setGScore(0);
 	//Calculate all three scores , f, g, h
 	current_node.calculate_H(goal_node);
 	current_node.calcuate_G(current_node.getGScore());
 	current_node.calculate_F();
 	cout << "Start Node : (" << start.getRow() << " " << start.getColumn() << ")" << endl;
+	//Add the current node to open list
 	open.push_back(&current_node);
 	while (!open.empty())
 	{

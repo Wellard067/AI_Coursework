@@ -52,7 +52,9 @@ void Henry::move()
 	{
 		coliisionTimer++;
 	}
+	turretHasTargetLocked = false;
 	facingFrendlyBase = false;
+	detectedEnemy = false;
 }
 
 void Henry::reset()
@@ -426,17 +428,6 @@ void Henry::pathFindingMachine() {
 			pathFindingState = FINISH_PRE_PATH;
 		}
 	}
-	if (pathFindingState == MOVE_TO_CENTRE&& currentNode->getColumn() == centreY&& currentNode->getRow() == centreX)
-	{
-		foundPath = false;
-		lastArea = MIDDLE;
-
-	}
-	if (pathFindingState == MOVE_TO_CENTRE && collisionDetected)
-	{
-		foundPath = false;
-		pathFindingState = COLLISION;
-	}
 	if (pathFindingState == MOVE_DIAGONAL)
 	{
 		if (reachedFinalGoal)
@@ -485,10 +476,6 @@ void Henry::runPathFindingMachine()
 		clearMovement();
 	}
 	break;
-	case MOVE_TO_CENTRE:
-	{
-		runAStarPathFinding(centreX, centreY);
-	}
 	break;
 	case MOVE_TO_OPP_X:
 	{
@@ -704,13 +691,13 @@ int Henry::randomizeXPosition(LastArea destination, bool addPrevious)
 	{
 	case TOP_LEFT:{
 		int x;
-		addPrevious ?  x = nodeColumn + (int)(rand() % 2): x = (int)(rand() % 2 + 2);
+		addPrevious ?  x = nodeColumn + (int)(rand() % 2): x = (int)(rand() % 2 + 3);
 		return x;
 	}
  break;
 	case BOTTOM_LEFT: {		
 		int x;
-		addPrevious ? x = nodeColumn + (int)(rand() % 2) : x = (int)(rand() % 2 + 2);
+		addPrevious ? x = nodeColumn + (int)(rand() % 2) : x = (int)(rand() % 2 + 3);
 		return x;
 	}
  break;
@@ -728,8 +715,6 @@ case BOTTOM_RIGHT:
 }
 
  break;
-case MIDDLE:{}
- break;
 default:
  break;
 	}
@@ -743,7 +728,7 @@ int Henry::randomizeYPosition(LastArea destination, bool addPrevious)
 	case TOP_LEFT: 
 	{
 		int y;
-		addPrevious ? y = nodeRow + (int)(rand() % 1 - 1): y = (int)(rand() % 2 + 2);
+		addPrevious ? y = nodeRow + (int)(rand() % 1 - 1): y = (int)(rand() % 2 + 3);
 		return y;
 	}
 	break;
@@ -757,7 +742,7 @@ int Henry::randomizeYPosition(LastArea destination, bool addPrevious)
 	case TOP_RIGHT: 
 	{
 		int y;
-		addPrevious ? y = nodeRow + (int)(rand() % 1 - 1) : y = (int)(rand() % 2 + 2);
+		addPrevious ? y = nodeRow + (int)(rand() % 1 - 1) : y = (int)(rand() % 2 + 3);
 		return y;
 	}
 	break;
@@ -768,8 +753,6 @@ int Henry::randomizeYPosition(LastArea destination, bool addPrevious)
 		return y; 
 	}
 	break;
-	case MIDDLE: {}
-						break;
 	default:
 		break;
 	}

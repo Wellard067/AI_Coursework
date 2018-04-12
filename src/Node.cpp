@@ -9,7 +9,6 @@ Node::Node(float xPosIn, float yPosIn, float heightIn, float widthIn, int r, int
 	height = heightIn;
 	width = widthIn;
 	current = false;
-	neighborToCurrentNode = false;
 	diagonal = false;
 	traversable = true;
 	//set the size, position and color of the nodes
@@ -27,12 +26,12 @@ Node::~Node()
 {
 }
 
-int Node::getX()
+int Node::getX() const
 {
 	return xPos + width / 2;
 }
 
-int Node::getY()
+int Node::getY() const
 {
 	return yPos + height / 2;
 }
@@ -92,31 +91,25 @@ float Node::getFScore() const
 	return f;
 }
 
-float Node::getGScore()
+float Node::getGScore() const
 {
 	return g;
 }
 
-float Node::getHScore()
+float Node::getHScore() const
 {
 	return h;
 }
 
 
-int Node::getRow()
+int Node::getRow() const
 {
 	return row;
 }
 
-int Node::getColumn()
+int Node::getColumn() const
 {
 	return column;
-}
-
-int Node::getIndex()
-{
-	index = column*width + row;
-	return index;
 }
 
 bool Node::isDiagonal()
@@ -124,20 +117,12 @@ bool Node::isDiagonal()
 	return diagonal;
 }
 
-void Node::setParentIndex(float parent_index)
-{
-	this->parent_index = parent_index;
-}
 
 void Node::setGScore(float g)
 {
 	this->g = g;
 }
 
-void Node::setIndex(int index)
-{
-	this->index = index;
-}
 
 void Node::setDiagonal(bool diagonal)
 {
@@ -149,7 +134,7 @@ bool Node::equals(Node &otherNode)
 }
 
 void Node::calcuate_G(float parentGScore) {
-	//Add 1.414 to cost if the
+	//Add 1.414 to cost if this node is diangal to its parent node
 	if (firstTimeCalG)
 	{
 		diagonal ? g = parentGScore + 1.414f : g = parentGScore + 1.0f;
@@ -159,7 +144,6 @@ void Node::calcuate_G(float parentGScore) {
 	else
 	{
 		diagonal ? new_g = parentGScore + 1.414f : new_g = parentGScore + 1.0f;
-		//std::cout << " Node Row :" << row << " Node Col :" << column << " G Score : " << g << " New G Score" << new_g << std::endl;
 	}
 }
 
@@ -179,11 +163,10 @@ void Node::calculate_H(Node &goalNode) {
 	dx = (float)(goalX - xPos);
 	dy = (float)(goalY - yPos);
 	h = sqrt(dx*dx + dy*dy);
-	
 }
 
 void Node::calculate_F()
 {
 	f = g + h;
 }
-;
+
