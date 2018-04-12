@@ -1,6 +1,6 @@
 #include "Node.h"
 
-Node::Node(int xPosIn,int yPosIn, int heightIn, int widthIn, int r, int c)
+Node::Node(float xPosIn, float yPosIn, float heightIn, float widthIn, int r, int c)
 {
 	xPos = xPosIn;
 	yPos = yPosIn;
@@ -9,32 +9,47 @@ Node::Node(int xPosIn,int yPosIn, int heightIn, int widthIn, int r, int c)
 	height = heightIn;
 	width = widthIn;
 	current = false;
-	neighborToCurrentNode = false;
 	diagonal = false;
+	traversable = true;
+	//set the size, position and color of the nodes
+	rect.setSize(sf::Vector2f(width, height));
+	rect.setPosition(sf::Vector2f(xPos, yPos));
+	rect.setFillColor(sf::Color(255, 255, 255, 50));
+	rect.setOutlineThickness(1);
+	rect.setOutlineColor(sf::Color(255, 255, 255, 100));
+}
+void Node::DrawNode(sf::RenderTarget &target) {
+	target.draw(rect);
 }
 
 Node::~Node()
 {
 }
 
-int Node::getX()
+int Node::getX() const
 {
 	return xPos + width / 2;
 }
 
-int Node::getY()
+int Node::getY() const
 {
 	return yPos + height / 2;
 }
 
 void Node::setWall()
 {
-	path = false;
+	traversable = false;
+	rect.setFillColor(sf::Color(100, 255, 255, 50));
 }
 
 void Node::setPath()
 {
-	path = true;
+	traversable = true;
+	rect.setFillColor(sf::Color(255, 255, 255, 50));
+}
+bool Node::isTraversable()
+{
+	return traversable;
 }
 
 void Node::setGoal()
@@ -47,10 +62,12 @@ void Node::setStart()
 
 void Node::setOpen()
 {
+	rect.setFillColor(sf::Color(200, 100,100, 50));
 }
 
 void Node::setClosed()
 {
+	rect.setFillColor(sf::Color(100, 150,150, 50));
 }
 
 void Node::setCurrent(bool current)
@@ -68,40 +85,31 @@ void Node::setColumn(int column)
 	this->column = column;
 }
 
-int Node::lowerOutcome(const Node other) const
-{
-	return 0;
-}
 
 float Node::getFScore() const
 {
 	return f;
 }
 
-float Node::getGScore()
+float Node::getGScore() const
 {
 	return g;
 }
 
-float Node::getHScore()
+float Node::getHScore() const
 {
 	return h;
 }
 
-int Node::getRow()
+
+int Node::getRow() const
 {
 	return row;
 }
 
-int Node::getColumn()
+int Node::getColumn() const
 {
 	return column;
-}
-
-int Node::getIndex()
-{
-	index = column*width + row;
-	return index;
 }
 
 bool Node::isDiagonal()
@@ -109,42 +117,52 @@ bool Node::isDiagonal()
 	return diagonal;
 }
 
-void Node::setParentIndex(float parent_index)
-{
-	this->parent_index = parent_index;
-}
 
 void Node::setGScore(float g)
 {
 	this->g = g;
 }
 
-void Node::setIndex(int index)
-{
-	this->index = index;
-}
 
 void Node::setDiagonal(bool diagonal)
 {
 	this->diagonal = diagonal;
 }
-bool Node::equals(Node *otherNode)
+bool Node::equals(Node &otherNode)
 {
-	return (row == otherNode->getRow() && column == otherNode->getColumn());
+	return (row == otherNode.getRow() && column == otherNode.getColumn());
 }
 
 void Node::calcuate_G(float parentGScore) {
+	//check if this is the first time this node calcuating G score
+	if (firstTimeCalG)
+	{	//Add 1.414 to cost if this node is diangal to its parent node
+		diagonal ? g = parentGScore + 1.414f : g = parentGScore + 1.0f;
 
-	diagonal ? g = parentGScore + 1.414f : parentGScore + 1.0f;
+		diagonal ? new_g = parentGScore + 1.414f : new_g = parentGScore + 1.0f;
+		firstTimeCalG = false;
+	}
+	else
+	{
+		diagonal ? new_g = parentGScore + 1.414f : new_g = parentGScore + 1.0f;
+	}
 }
 
-void Node::calculate_H(Node* goalNode) {
-	int goalX = goalNode->getX();
-	int goalY = goalNode->getY();
+void Node::improveG()
+{
+	this->g = new_g;
+}
+bool Node::canImproveG()
+{
+	return g >= new_g;
+}
+void Node::calculate_H(Node &goalNode) {
+	int goalX = goalNode.getX();
+	int goalY = goalNode.getY();
 	float dx, dy;
 	//Calculate distance between current node and goal node 
 	dx = (float)(goalX - xPos);
-	dy = (float)(goalX - yPos);
+	dy = (float)(goalY - yPos);
 	h = sqrt(dx*dx + dy*dy);
 }
 
@@ -152,4 +170,4 @@ void Node::calculate_F()
 {
 	f = g + h;
 }
-;
+
