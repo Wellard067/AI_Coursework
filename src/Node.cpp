@@ -134,10 +134,11 @@ bool Node::equals(Node &otherNode)
 }
 
 void Node::calcuate_G(float parentGScore) {
-	//Add 1.414 to cost if this node is diangal to its parent node
+	//check if this is the first time this node calcuating G score
 	if (firstTimeCalG)
-	{
+	{	//Add 1.414 to cost if this node is diangal to its parent node
 		diagonal ? g = parentGScore + 1.414f : g = parentGScore + 1.0f;
+
 		diagonal ? new_g = parentGScore + 1.414f : new_g = parentGScore + 1.0f;
 		firstTimeCalG = false;
 	}

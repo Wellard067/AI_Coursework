@@ -44,15 +44,19 @@ void Henry::move()
 	}
 	//calculate which node the tank is on based on x and y position of the tank
 	setCurrentNode();
+	//run all four finite state machine
+	//responsible for turret aiming
 	turretAimMachine();
+	//responsible for turret firing
 	turretfiringMachine();
+	//responsible for path finding
 	pathFindingMachine();
+	//responsbile for tank movement
 	tankMovementMachine();
 	if (collisionDetected)
 	{
 		coliisionTimer++;
 	}
-	turretHasTargetLocked = false;
 	facingFrendlyBase = false;
 	detectedEnemy = false;
 }
@@ -73,6 +77,7 @@ void Henry::markTarget(Position p)
 	enemyType = BASE;
 	enemyBaseDistance = calculateDistance(p);
 	targetRotationAngle = calculateNeededAngle(p);
+	turretHasTargetLocked = false;
 }
 
 void Henry::markBase(Position p)
@@ -121,6 +126,7 @@ void Henry::markEnemy(Position p)
 	detectedEnemy = true;
 	enemyType = TANK;
 	targetRotationAngle = calculateNeededAngle(p);
+	turretHasTargetLocked = false;
 }
 //calculate the distance between AI tank and target
 float Henry::calculateDistance(Position p)
@@ -181,6 +187,7 @@ void Henry::setCurrentNode() {
 }
 void Henry::turretAimMachine()
 {
+	//switch to different state based on the data the AI gathered
 	if (turretAimState == DETECTION&&!hasAmmo())
 	{
 		turretAimState = NOAMMO;
@@ -212,30 +219,22 @@ void Henry::runTurretAimStateMachine()
 	case AIM: {
 		if (enemyType = BASE)
 		{
-			//if (enemyBaseDistance <170.0f)
-			//{
 				pathFindingState = STAND;
-			//}
-			//else
-			//{
-			//	turretHasTargetLocked = false;
-			//	firing = false;
-			//}
 		}
-		float deltaR = turretTh - targetRotationAngle;
-			if (deltaR > 1 && deltaR < 180) {
+		float targetAngle = turretTh - targetRotationAngle;
+			if (targetAngle > 1 && targetAngle < 180) {
 				turretGoLeft();
 				turretHasTargetLocked = false;
 			}
-			else if (deltaR < -1 && deltaR > -180) {
+			else if (targetAngle < -1 && targetAngle > -180) {
 				turretGoRight();
 				turretHasTargetLocked = false;
 			}
-			else if (deltaR > 180) {
+			else if (targetAngle > 180) {
 				turretGoRight();
 				turretHasTargetLocked = false;
 			}
-			else if (deltaR < -180) {
+			else if (targetAngle < -180) {
 				turretGoLeft();
 				turretHasTargetLocked = false;
 			}
@@ -260,6 +259,7 @@ void Henry::runTurretAimStateMachine()
 }
 void Henry::turretfiringMachine()
 {
+	//switch to different state based on the data the AI gathered
 	if (turretFiringState == LOOKING_FOR_TARGET&&turretHasTargetLocked&&!facingFrendlyBase)
 	{
 			turretFiringState = SHOOTING;
@@ -296,15 +296,15 @@ void Henry::tankMovementMachine()
 {
 	tankMovementState = IDLE;
 	goThorughPath();
-	float deltaR = 0;
+	float targetAngle = 0;
 	if (targetNodeInitialized)
 	{
-		 deltaR = calculateTankDeltaR(targetNode);
+		 targetAngle = calculateTankDeltaR(targetNode);
 	}
 	int directionThreshold = 7;
-	bool facingDirection = (deltaR < directionThreshold && deltaR > -directionThreshold);
+	bool facingDirection = (targetAngle < directionThreshold && targetAngle > -directionThreshold);
 	bool reachesGoal = (path.size() == 0);
-
+	//switch to different state based on the data the AI gathered
 	if (tankMovementState == IDLE)
 	{
 		if (collisionDetected)
@@ -348,7 +348,7 @@ void Henry::tankMovementMachine()
 	{
 		foundPath = false;
 	}
-	runTankMachine(deltaR);
+	runTankMachine(targetAngle);
 }
 //go through the A* path
 void Henry::goThorughPath()
@@ -365,22 +365,22 @@ void Henry::goThorughPath()
 		}
 	}
 }
-void Henry::runTankMachine(float deltaR)
+void Henry::runTankMachine(float targetAngle)
 {
 	switch (tankMovementState)
 	{
 	case ROTATE:
 	{//handles which direction the tank is facing depending on the position of the next node
-		if (deltaR > 1 && deltaR < 180) {
+		if (targetAngle > 1 && targetAngle < 180) {
 			goLeft();
 		}
-		else if (deltaR < -1 && deltaR > -180) {
+		else if (targetAngle < -1 && targetAngle > -180) {
 			goRight();
 		}
-		else if (deltaR > 180) {
+		else if (targetAngle > 180) {
 			goRight();
 		}
-		else if (deltaR < -180) {
+		else if (targetAngle < -180) {
 			goLeft();
 		}
 	} break;
@@ -401,9 +401,10 @@ void Henry::runTankMachine(float deltaR)
 		{
 			collisionDetected = true;
 		}
-		if (coliisionTimer > 40)
+		if (coliisionTimer > 30)
 		{
 			collisionDetected = false;
+			coliisionTimer = 0;
 		}
 	}
 	break;
@@ -413,6 +414,17 @@ void Henry::runTankMachine(float deltaR)
 }
 void Henry::pathFindingMachine() {
 	reachedFinalGoal = tankReachedGoal(goalNodeX, goalNodeY);
+	//switch to different state based on the data the AI gathered
+	if (collisionDetected)
+	{
+		pathFindingState = COLLISION;
+	}
+	if (pathFindingState == COLLISION&&!collisionDetected)
+	{
+		foundPath = false;
+		reachedFinalGoal = false;
+		pathFindingState = FINISH_PRE_PATH;
+	}
 	if (pathFindingState == STAND)
 	{
 		if (!detectedEnemy&&detectingEnemy)

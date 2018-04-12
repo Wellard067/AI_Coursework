@@ -43,7 +43,7 @@ bool AStar::pathExists(Node start, Node goal)
 			//Clear the previous path
 			path.clear();
 			//Construct the path using closed list
-			construct_path(closed, &goal);
+			constructPath(closed, &goal);
 			cout << "Goal Node : (" << goal.getRow() << " " << goal.getColumn() << ")" << endl;
 			return true;
 		}
@@ -149,7 +149,7 @@ vector<Node*> AStar::getNeighbours(Node *node)
 	return neighbors;
 }
 
-void AStar::construct_path(list<Node>& closed, Node* node) {
+void AStar::constructPath(list<Node>& closed, Node* node) {
 	list<Node>::iterator graphListIter;
 	Node* currentNode = node; // Set the current node to goal node
 	path.push_front(*currentNode); // Add the current node the the start of the path
