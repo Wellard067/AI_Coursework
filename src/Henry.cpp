@@ -4,9 +4,13 @@
 
 Henry::Henry()
 {
+	//initialize map object
 	map = new Map();
 	mapMaxRow = map->rows;
 	mapMaxColumn = map->columns;
+	centreX = mapMaxRow / 2;
+	centreY = mapMaxColumn / 2;
+	//initialize AStar object
 	aStar = new AStar(map);
 	clearMovement();
 }
@@ -27,6 +31,7 @@ void Henry::score(int thisScore, int enemyScore)
 
 void Henry::move()
 {
+	//set the edge of the map as not traversable
 	for (int i = 0; i < mapMaxColumn ; i++)
 	{
 		map->mapArray[0][i]->setWall();
@@ -37,11 +42,17 @@ void Henry::move()
 		map->mapArray[i][0]->setWall();
 		map->mapArray[i][mapMaxColumn - 1]->setWall();
 	}
+	//calculate which node the tank is on based on x and y position of the tank
 	setCurrentNode();
+	friendlyBaseSpotted = false;
 	turretAimMachine();
 	turretfiringMachine();
 	pathFindingMachine();
-	tankMachine();
+	tankMovementMachine();
+	if (collisionDetected)
+	{
+		coliisionTimer++;
+	}
 }
 
 void Henry::reset()
@@ -52,37 +63,35 @@ void Henry::reset()
 void Henry::collided()
 {
 	collisionDetected = true;
-	coliisionTimer++;
 }
 
 void Henry::markTarget(Position p)
 {
 	detectedEnemy = true;
 	enemyType = BASE;
-	targetDistance = getDistance(p);
-	//Using tan(angle) = y/x to work out the angle between the target and our AI tank
+	enemyBaseDistance = getDistance(p);
 	targetRotationAngle = calculateNeededAngle(p);
-	//std::cout << "Target spotted at (" << p.getX() << ", " << p.getY() << ")\n";
 }
 
 void Henry::markBase(Position p)
 {
+	friendlyBaseSpotted = true;
 	markNodeAsNotTraversable(p);
-	targetDistance = getDistance(p);
-	if (targetDistance < safeDistance)
-	{
-		if (amountReconstrctedPath < 2)
-		{
-			cout << "Reset path" << endl;
-			foundPath = false;
-			amountReconstrctedPath++;
-		}
-	}
-	else if (amountReconstrctedPath > 2)
+	friendlyBaseDistance = getDistance(p);
+	if (reachedFinalGoal)
 	{
 		amountReconstrctedPath = 0;
 	}
-	//std::cout << "Base spotted at (" << p.getX() << ", " << p.getY() << ")\n";
+	if (friendlyBaseDistance < safeDistance)
+	{
+		if (amountReconstrctedPath < 3)
+		{
+			cout << "Reset path" << endl;
+			foundPath = false;
+			pathFindingState = FINISH_PRE_PATH;
+		}
+		amountReconstrctedPath++;
+	}
 }
 
 void Henry::markShell(Position p)
@@ -98,7 +107,6 @@ void Henry::markEnemy(Position p)
 {
 	detectedEnemy = true;
 	enemyType = TANK;
-	//std::cout << "Enemy spotted at (" << p.getX() << ", " << p.getY() << ")\n";
 	targetRotationAngle = calculateNeededAngle(p);
 }
 
@@ -106,8 +114,8 @@ float Henry::getDistance(Position p)
 {
 	float dx = (float)(p.getX() - getX());
 	float dy = (float)(p.getY() - getY());
-	targetDistance = sqrt(dx*dx + dy*dy);
-	return targetDistance;
+	friendlyBaseDistance = sqrt(dx*dx + dy*dy);
+	return friendlyBaseDistance;
 }
 float Henry::calculateDeltaR(Node *targetNode)
 {
@@ -132,6 +140,7 @@ float Henry::calculateNeededAngle(Position p)
 	float neededAngle = angleInDegree + 180;
 	return neededAngle;
 }
+//mark all the nodes around friendly base as not traversable. 
 void Henry::markNodeAsNotTraversable(Position target)
 {
 	float x = target.getX();
@@ -158,6 +167,14 @@ void Henry::setCurrentNode() {
 }
 void Henry::turretAimMachine()
 {
+	if (turretAimState == DETECTION&&!hasAmmo())
+	{
+		turretAimState = NOAMMO;
+	}
+	if (turretAimState == AIM&&!hasAmmo())
+	{
+		turretAimState = NOAMMO;
+	}
 	if (turretAimState == DETECTION&&detectedEnemy)
 	{
 		turretAimState = AIM;
@@ -179,7 +196,18 @@ void Henry::runTurretAimStateMachine()
 	}
 	break;
 	case AIM: {
-		pathFindingState = STAND;
+		if (enemyType = BASE)
+		{
+			//if (enemyBaseDistance <170.0f)
+			//{
+				pathFindingState = STAND;
+			//}
+			//else
+			//{
+			//	turretHasTargetLocked = false;
+			//	firing = false;
+			//}
+		}
 		float deltaR = turretTh - targetRotationAngle;
 		if (deltaR > 1 && deltaR < 180) {
 			turretGoLeft();
@@ -206,8 +234,11 @@ void Henry::runTurretAimStateMachine()
 		}
 		break;
 	}
-	case NO_AMMO:
-		break;
+	case NOAMMO:
+	{
+		turretHasTargetLocked = false;
+		turretGoRight();
+	}
 	default:
 		break;
 	}
@@ -215,18 +246,11 @@ void Henry::runTurretAimStateMachine()
 }
 void Henry::turretfiringMachine()
 {
-	if (turretFiringState == LOOKING_FOR_TARGET&&turretHasTargetLocked)
+	if (turretFiringState == LOOKING_FOR_TARGET&&turretHasTargetLocked&&!friendlyBaseSpotted)
 	{
-		if (enemyType==TANK)
-		{
-			turretFiringState = SHOOTING_TANK;
-		}
-		if (enemyType == BASE)
-		{
-			turretFiringState = SHOOTING_BASE;
-		}
+			turretFiringState = SHOOTING;
 	}
-	if ((turretFiringState == SHOOTING_TANK|| turretFiringState == SHOOTING_BASE)&&detectingEnemy)
+	if ((turretFiringState == SHOOTING)&&detectingEnemy)
 	{
 		turretFiringState = LOOKING_FOR_TARGET;
 	}
@@ -236,15 +260,11 @@ void Henry::runTurretFiringMachine()
 {
 	switch (turretFiringState)
 	{
-	case SHOOTING_BASE:
+	case SHOOTING:
 	{
 		firing = true;
 	}
 	break;
-	case SHOOTING_TANK: {
-		firing = true;
-	}
-						break;
 	case LOOKING_FOR_TARGET:
 	{
 		firing = false;
@@ -254,28 +274,16 @@ void Henry::runTurretFiringMachine()
 		break;
 	}
 }
-void Henry::tankMachine()
+void Henry::tankMovementMachine()
 {
 	tankMovementState = IDLE;
-	if (path.size() != 0) { // go through the A* path
-		targetNode = &path.front();
-		targetNodeInitialize = true;
-		map->mapArray[targetNode->getRow()][targetNode->getColumn()]->setPath();
-		if (targetNode->equals(*currentNode)) {
-			cout << "Reached: " << targetNode->getRow() << " " << targetNode->getColumn() << endl;
-			path.pop_front();
-			if (path.size() != 0) {
-			targetNode = &path.front();
-			}
-		}
-	}
+	goThorughPath();
 	float deltaR = 0;
-	if (targetNodeInitialize)
+	if (targetNodeInitialized)
 	{
 		 deltaR = calculateDeltaR(targetNode);
 	}
-	int distanceThreshold = 5;
-	int directionThreshold = 5;
+	int directionThreshold = 7;
 	bool facingDirection = (deltaR < directionThreshold && deltaR > -directionThreshold);
 	bool reachesGoal = (path.size() == 0);
 
@@ -314,7 +322,7 @@ void Henry::tankMachine()
 			tankMovementState = MOVING_TOWARD;
 		}
 	}
-	if (tankMovementState == MOVING_BACKWARD&&!collisionDetected)
+	else if (tankMovementState == MOVING_BACKWARD&&!collisionDetected)
 	{
 		tankMovementState = IDLE;
 	}
@@ -324,7 +332,21 @@ void Henry::tankMachine()
 	}
 	runTankMachine(deltaR);
 }
-
+//go through the A* path
+void Henry::goThorughPath()
+{
+	if (path.size() != 0) {
+		targetNode = &path.front();
+		targetNodeInitialized = true;
+		map->mapArray[targetNode->getRow()][targetNode->getColumn()]->setPath();
+		if (targetNode->equals(*currentNode)) {
+			path.pop_front();
+			if (path.size() != 0) {
+				targetNode = &path.front();
+			}
+		}
+	}
+}
 void Henry::runTankMachine(float deltaR)
 {
 	switch (tankMovementState)
@@ -345,26 +367,25 @@ void Henry::runTankMachine(float deltaR)
 		}
 	} break;
 	case MOVING_TOWARD:
-	{
+	{//move forward if facing the right direction
 		goForward();
 	}
 	break;
 	case IDLE:
 	{
 		stop();
-		ShellDetectedTimer = 0;
 	}
 	break;
 	case MOVING_BACKWARD:
-	{
+	{//move backward if collision detected
 		goBackward();
-		if (coliisionTimer< 5)
+		if (coliisionTimer< 20)
+		{
+			collisionDetected = true;
+		}
+		if (coliisionTimer > 40)
 		{
 			collisionDetected = false;
-		}
-		else
-		{
-			coliisionTimer = 0;
 		}
 	}
 	break;
@@ -373,49 +394,73 @@ void Henry::runTankMachine(float deltaR)
 	}
 }
 void Henry::pathFindingMachine() {
-	int centreX = mapMaxRow / 2;
-	int centreY = mapMaxColumn / 2;
+	reachedFinalGoal = tankReachedGoal(finalGoalX, finalGoalY);
 	if (pathFindingState == STAND)
 	{
-		if (detectedEnemy&&!detectingEnemy)
-		{
-		}
-		else if (!detectedEnemy&&detectingEnemy)
+		if (!detectedEnemy&&detectingEnemy)
 		{
 			foundPath = false;
-			pathFindingState = MOVE_TO_CENTRE;
+			reachedFinalGoal = false;
+			pathFindingState = FINISH_PRE_PATH;
 		}
-
+		if (!hasAmmo())
+		{
+			foundPath = false;
+			reachedFinalGoal = false;
+			pathFindingState = FINISH_PRE_PATH;
+		}
 	}
 	if (pathFindingState == MOVE_TO_CENTRE&& currentNode->getColumn() == centreY&& currentNode->getRow() == centreX)
 	{
 		foundPath = false;
-		pathFindingState = MOVEAROUND_MAP;
 		lastLocation = MIDDLE;
-		cout << "Switch to move around map state " << endl;
+
 	}
 	if (pathFindingState == MOVE_TO_CENTRE && collisionDetected)
 	{
 		foundPath = false;
 		pathFindingState = COLLISION;
 	}
-
-	if (pathFindingState == DODGE_SHELL&&!detectedShell)
+	if (pathFindingState == MOVE_DIAGONAL)
 	{
-		pathFindingState = MOVEAROUND_MAP;
+		if (reachedFinalGoal)
+		{
+			foundPath = false;
+			reachedFinalGoal = false;
+			pathFindingState = MOVE_TO_OPP_Y;
+		}
 	}
-	if (pathFindingState == COLLISION && !collisionDetected)
+	if (pathFindingState == MOVE_TO_OPP_Y)
 	{
-		foundPath = false;
-		pathFindingState = MOVEAROUND_MAP;
+		if (reachedFinalGoal)
+		{
+			foundPath = false;
+			reachedFinalGoal = false;
+			pathFindingState = MOVE_DIAGONAL;
+		}
+	}
+	if (pathFindingState == MOVE_TO_OPP_X)
+	{
+		if (reachedFinalGoal)
+		{
+			foundPath = false;
+			reachedFinalGoal = false;
+			pathFindingState = MOVE_DIAGONAL;
+		}
+	}
+	if (pathFindingState == FINISH_PRE_PATH)
+	{
+ 		if (reachedFinalGoal)
+		{
+			foundPath = false;
+			reachedFinalGoal = false;
+			pathFindingState = MOVE_TO_OPP_Y;
+		}
 	}
 	runPathFindingMachine();
 }
 void Henry::runPathFindingMachine()
 {
-	int centreX = mapMaxRow / 2;
-	int centreY = mapMaxColumn / 2;
-	
 	switch (pathFindingState)
 	{
 	case STAND:
@@ -426,190 +471,290 @@ void Henry::runPathFindingMachine()
 	break;
 	case MOVE_TO_CENTRE:
 	{
-		while (!foundPath)
-		{
-			path.clear();
-			if (aStar->pathExists(*currentNode, *map->mapArray[centreX][centreY]))
-			{
-				foundPath = true;
-				path = aStar->getPath();
-			}
-			else
-			{
-				centreX++;
-				centreY++;
-			}
-		}
+		runAStarPathFinding(centreX, centreY);
 	}
 	break;
-	case MOVE_TO_OTHER_SIDE:
+	case MOVE_TO_OPP_X:
 	{
-		if (currentNode->getRow() < centreX && currentNode->getColumn() > centreY)
+		if (tankLocated("TOP_RIGHT"))
 		{
-			int x = (int)(rand() % 2 + 2);
-			int y = (int)(rand() % 2 + 2);
-			findPath(y, x);
-			lastLocation = TOP_LEFT;
+			findPathTo(TOP_LEFT, MOVE_TO_OPP_X);
 		}
-		else if (currentNode->getRow() >= centreX && currentNode->getColumn() > centreY)
+		else if (tankLocated("BOTTOM_RIGHT"))
 		{
-			int x = (int)(rand() % 2 + 2);
-			int y = (int)(rand() % 2 + (mapMaxRow - 3));
-			findPath(y, x);
-			lastLocation = BOTTOM_LEFT;
+			findPathTo(BOTTOM_LEFT, MOVE_TO_OPP_X);
 		}
-		else if (currentNode->getRow() <= centreX && currentNode->getColumn() < centreY)
+		else if (tankLocated("TOP_LEFT"))
 		{
-			int x = (int)(rand() % 2 + (mapMaxColumn - 3));
-			int y = (int)(rand() % 2 + 2);
-
-			findPath(y, x);
-			lastLocation = TOP_RIGHT;
+			findPathTo(TOP_RIGHT, MOVE_TO_OPP_X);
 		}
-		else if (currentNode->getRow() <= centreX && currentNode->getColumn() > centreY)
+		else if (tankLocated("BOTTOM_LEFT"))
 		{
-			int x = (int)(rand() % 2 + (mapMaxColumn - 3));
-			int y = (int)(rand() % 2 + (mapMaxRow - 3));
-			findPath(y, x);
-			lastLocation = BOTTOM_RIGHT;
+			findPathTo(BOTTOM_RIGHT, MOVE_TO_OPP_X);
 		}
 	}
 		break;
-	case MOVEAROUND_MAP:
+	case MOVE_TO_OPP_Y:
 	{
-			switch (lastLocation)
-			{
-			case TOP_LEFT:
-			{
-				int x = (int)(rand() % 2 + 2);
-				int y = (int)(rand() % 2 + (mapMaxRow - 3));
-				findPath(y, x);
-				lastLocation = BOTTOM_LEFT;
-			}
-			break;
-			case BOTTOM_LEFT:
-			{
-				int x = (int)(rand() % 2 + 2);
-				int y = (int)(rand() % 2 +2);
-				 findPath(y, x);
-				lastLocation = TOP_LEFT;
-			}
-			break;
-			case TOP_RIGHT:
-			{
-				int x = (int)(rand() % 2 + (mapMaxColumn - 3));
-				int y = (int)(rand() % 2 + (mapMaxRow - 3));
-				findPath(y, x);
-				lastLocation = BOTTOM_RIGHT;
-			}
-			break;
-
-			case BOTTOM_RIGHT:
-			{
-				int x = (int)(rand() % 2 + (mapMaxColumn - 3));
-				int y = (int)(rand() % 2 + 2);
-				findPath(y, x);
-				lastLocation = TOP_RIGHT;
-			}
-			break;
-			case MIDDLE:
-				lastLocation = static_cast<LastLocation>(rand() % 3);
-				break;
-			default:
-				break;
-			}
-		cout << foundPath << endl;
-		cout << "Last location: " << lastLocation << endl;
+		if (tankLocated("BOTTOM_LEFT"))
+		{
+			findPathTo(TOP_LEFT, MOVE_TO_OPP_Y);
+		}
+		else if (tankLocated("TOP_LEFT"))
+		{
+			findPathTo(BOTTOM_LEFT, MOVE_TO_OPP_Y);
+		}
+		else if (tankLocated("BOTTOM_RIGHT"))
+		{
+			findPathTo(TOP_RIGHT, MOVE_TO_OPP_Y);
+		}
+		else if (tankLocated("TOP_RIGHT"))
+		{
+			findPathTo(BOTTOM_RIGHT, MOVE_TO_OPP_Y);
+		}
+	}
+		break;
+	case MOVE_DIAGONAL:
+	{
+		if (tankLocated("BOTTOM_LEFT"))
+		{
+			findPathTo(TOP_RIGHT, MOVE_DIAGONAL);
+		}
+		else if (tankLocated("TOP_LEFT"))
+		{
+			findPathTo(BOTTOM_RIGHT, MOVE_DIAGONAL);
+		}
+		else if (tankLocated("BOTTOM_RIGHT"))
+		{
+			findPathTo(TOP_LEFT, MOVE_DIAGONAL);
+		}
+		else if (tankLocated("TOP_RIGHT"))
+		{
+			findPathTo(BOTTOM_LEFT, MOVE_DIAGONAL);
+		}
+		else if (tankLocated("LEFT"))
+		{
+			findPathTo(BOTTOM_RIGHT, MOVE_DIAGONAL);
+		}
+		else if (tankLocated("RIGHT"))
+		{
+			findPathTo(BOTTOM_LEFT, MOVE_DIAGONAL);
+		}
 	}
 	break;
-	//case DODGE_SHELL:
-	//{
-	//	ShellDetectedTimer++;
-	//	int dodgeX = 0;
-	//	int dodgeY = 0;
-	//	if (currentNode->getRow() > shellY && currentNode->getColumn()> shellX&&pos.getTh() <225&&pos.getTh() >45)
-	//	{
-	//		dodgeX = currentNode->getColumn() - 1;
-	//		dodgeY = currentNode->getRow() + 1;
-	//	}
-	//	else
-	//	{
-	//		dodgeX = currentNode->getColumn() + 1;
-	//		dodgeY = currentNode->getRow() - 1;
-	//	}
-	//	if (currentNode->getRow() > shellY && currentNode->getColumn()< shellX&&pos.getTh() <315 && pos.getTh() >135)
-	//	{
-	//		dodgeX = currentNode->getColumn() - 1;
-	//		dodgeY = currentNode->getRow() - 1;
-	//	}
-	//	else
-	//	{
-	//		dodgeX = currentNode->getColumn() + 1;
-	//		dodgeY = currentNode->getRow() + 1;
-	//	}
-	//	if (currentNode->getRow() < shellY && currentNode->getColumn()< shellX)
-	//	{
-	//		dodgeX = currentNode->getColumn() - 2;
-	//		dodgeY = currentNode->getRow() + 2;
-	//	}
-	//	if (currentNode->getRow() < shellY && currentNode->getColumn()> shellX)
-	//	{
-	//		dodgeX = currentNode->getColumn() - 2;
-	//		dodgeY = currentNode->getRow() - 2;
-	//	}
-	//	if (ShellDetectedTimer <50)
-	//	{
-	//		if (!foundPath)
-	//		{
-	//			path.clear();
-	//			if (aStar->pathExists(*currentNode, *map->mapArray[dodgeX][dodgeY]))
-	//			{
-	//				foundPath = true;
-	//				path = aStar->getPath();
-	//			}
-	//		}
-	//	}
-	//}
-	//break;
+	case FINISH_PRE_PATH:
+	{
+		bool addPreviousX = false;
+		bool addPreviousY = false;
+		int x = randomizeXPosition(lastLocation, addPreviousX);
+		int y = randomizeYPosition(lastLocation, addPreviousY);
+		runAStarPathFinding(y, x);
+	}
+	break;
 	case COLLISION:
 	{
-		lastLocation = TOP_RIGHT;
+
 	}
 	break;
 	default:
 		break;
 	}
 }
-void Henry::findPath(int y,int x)
+void Henry::findPathTo(LastLocation destination, PathFindingState whatState) {
+	bool addPreviousX;
+	bool addPreviousY;
+	switch (whatState)
+	{
+	case MOVE_DIAGONAL:
+	{
+		addPreviousX = false;
+		addPreviousY = false;
+	}
+	break;
+	case MOVE_TO_OPP_X:
+	{
+		addPreviousX = false;
+		addPreviousY = true;
+	}
+	break;
+	case MOVE_TO_OPP_Y:
+	{
+		addPreviousX = true;
+		addPreviousY = false;
+	}
+	break;
+	case FINISH_PRE_PATH:
+	{
+		addPreviousX = false;
+		addPreviousY = false;
+	}
+	break;
+	default:
+	{
+		addPreviousX = false;
+		addPreviousY = false;
+	}
+		break;
+	}
+	int x = randomizeXPosition(destination, addPreviousX);
+	int y = randomizeYPosition(destination, addPreviousY);
+	runAStarPathFinding(y, x);
+	if (whatState != FINISH_PRE_PATH)
+	{
+		lastLocation = destination;
+	}
+}
+//find the shortest path using A star algorithem
+void Henry::runAStarPathFinding(int x,int y)
 {
-	int row = y;
-	int column = x;
-	bool xyNeedRadnom = false;
+	int row = x;
+	int column = y;
+	while (map->mapArray[row][column]->isTraversable()==false)
+	{
+		(row >= centreX) ? row =+ 1 : row =- 1;
+		(column >= centreY) ? column =+ 1 : column =- 1;
+	}
 	while (!foundPath)
 	{
-		if (xyNeedRadnom)
-		{
-			row = y+(int)(rand() % 1 + 3);
-			if (y + row > mapMaxRow - 1)
-			{
-				row = y - (int)(rand() % 1 + 3);
-			}
-			column = x+ (int)(rand() % 1 + 3);
-			if (x + column > mapMaxColumn - 1)
-			{
-				column = x  - (int)(rand() % 1 + 3);
-			}
-		}
 		path.clear();
 		if (aStar->pathExists(*currentNode, *map->mapArray[row][column]))
 		{
 			path = aStar->getPath();
 			foundPath = true;
-			xyNeedRadnom = false;
+			finalGoalY = row;
+			finalGoalX = column;
 		}
-		else
-		{
-			xyNeedRadnom = true;
-		}
+	}
+}
+//check where the tank is located
+bool Henry::tankLocated(string position)
+{
+	int nodeRow = currentNode->getRow();
+	int nodeColumn = currentNode->getColumn();
+	if (position =="TOP_LEFT")
+	{
+		return (nodeColumn < centreX && nodeRow < centreY);
+	}
+	else if (position == "TOP_RIGHT")
+	{
+		return (nodeColumn > centreX && nodeRow < centreY);
+	}
+	else if (position == "BOTTOM_LEFT")
+	{
+		return (nodeColumn < centreX &&nodeRow > centreY);
+	}
+	else if (position == "BOTTOM_RIGHT")
+	{
+		return(nodeColumn > centreX && nodeRow > centreY);
+	}
+	else if (position == "CENTRE")
+	{
+		return (nodeColumn == centreY&& nodeRow == centreX);
+	}
+	else if (position == "LEFT")
+	{ 
+		return (nodeColumn == centreY&& nodeRow < centreX);
+	}
+	else if (position =="RIGHT")
+	{ 
+		return (nodeColumn == centreY&& nodeRow > centreX);
+	}
+	else if (position =="TOP")
+	{ 
+		return (nodeColumn < centreY&& nodeRow == centreX);
+	}
+	else if (position =="BOTTOM")
+	{ 
+		return (nodeColumn > centreY&& nodeRow == centreX);
+	}
+	return false;
+}
+//check if the tank reached goal node
+bool Henry::tankReachedGoal(int row, int column)
+{
+	int nodeRow = currentNode->getRow();
+	int nodeColumn = currentNode->getColumn();
+	if ((nodeColumn == row)&&(nodeRow == column))
+	{
+		return true;
+	}
+	return false;
+}
+//randomize the x position within a given area
+int Henry::randomizeXPosition(LastLocation destination, bool addPrevious)
+{
+	int nodeColumn = currentNode->getColumn();
+	switch (destination)
+	{
+	case TOP_LEFT:{
+		int x;
+		addPrevious ?  x = nodeColumn + (int)(rand() % 2): x = (int)(rand() % 2 + 2);
+		return x;
+	}
+ break;
+	case BOTTOM_LEFT: {		
+		int x;
+		addPrevious ? x = nodeColumn + (int)(rand() % 2) : x = (int)(rand() % 2 + 2);
+		return x;
+	}
+ break;
+case TOP_RIGHT:{	
+	int x;
+	addPrevious ? x = nodeColumn - (int)(rand() % 2) : x = (int)(rand() % 2 + (mapMaxColumn - 3));
+	return x;
+}
+ break;
+case BOTTOM_RIGHT:
+{				
+	int x;
+	addPrevious ? x = nodeColumn - (int)(rand() % 2) : x = (int)(rand() % 2 + (mapMaxColumn - 3));
+	return x;
+}
+
+ break;
+case MIDDLE:{}
+ break;
+default:
+ break;
+	}
+	return 0;
+}
+int Henry::randomizeYPosition(LastLocation destination, bool addPrevious)
+{
+	int nodeRow = currentNode->getRow();
+	switch (destination)
+	{
+	case TOP_LEFT: 
+	{
+		int y;
+		addPrevious ? y = nodeRow + (int)(rand() % 1 - 1): y = (int)(rand() % 2 + 2);
+		return y;
+	}
+	break;
+	case BOTTOM_LEFT: 
+	{
+		int y;
+		addPrevious ? y = nodeRow + (int)(rand() % 1 - 1) : y = (int)(rand() % 2 + (mapMaxRow - 3));
+		return y;
+	}
+	break;
+	case TOP_RIGHT: 
+	{
+		int y;
+		addPrevious ? y = nodeRow + (int)(rand() % 1 - 1) : y = (int)(rand() % 2 + 2);
+		return y;
+	}
+	break;
+	case BOTTOM_RIGHT: 
+	{
+		int y;
+		addPrevious ? y = nodeRow + (int)(rand() % 1 - 1) : y = (int)(rand() % 2 + (mapMaxRow - 3));
+		return y; 
+	}
+	break;
+	case MIDDLE: {}
+						break;
+	default:
+		break;
 	}
 }
