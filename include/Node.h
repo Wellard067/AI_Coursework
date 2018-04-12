@@ -18,11 +18,9 @@ private:
 	bool diagonal;
 	//Using SFML to draw the nodes
 	sf::RectangleShape rect;
-	//new_g and old_g are used to check if the G score can be improved
+	//new_g is used to check if the G score can be improved
 	//new g score
 	float new_g;
-	//old g score
-	float old_g;
 	//see if the node is calculating G score for the first time
 	bool firstTimeCalG;
 	//see if the node is traversable
@@ -46,7 +44,6 @@ public:
 	void setColumn(int column);	
 	void setGScore(float value);
 	void setDiagonal(bool diagonal);	
-	bool isTraversable();
 	//getter
 	float getFScore() const;
 	float getGScore() const;
@@ -55,7 +52,11 @@ public:
 	int getY() const;
 	int getRow() const;
 	int getColumn() const;
+	//check if this node is diagonal to it's parent node
 	bool isDiagonal();
+	//check if this node is traversable
+	bool isTraversable();
+	//check if this node is equals to the target node.
 	bool equals(Node &otherNode);
 	//calculate F, H, G scores
 	void calculate_F();

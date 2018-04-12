@@ -8,6 +8,7 @@ using namespace std;
 class AStar
 {
 public:
+	//check if the path exsits using A* algorithem
 	bool pathExists(Node start, Node goal);
 	list<Node> getPath();
 	AStar(Map * map);
@@ -15,9 +16,10 @@ public:
 private:
 	//get all the neighbours around the current node
 	vector<Node*> getNeighbours(Node * node);
-	//
+	//construct the path using the closed list that the A* constructed
+	void constructPath(std::list<Node>& closed, Node * node);
+	//where the constructed path is stored
 	list<Node> path;
-	void construct_path(std::list<Node>& closed, Node * node);
 	Map* mapPointer;
 };
 
