@@ -13,7 +13,9 @@ public:
 	AStar(Map * map);
 	~AStar();
 private:
+	//get all the neighbours around the current node
 	vector<Node*> getNeighbours(Node * node);
+	//
 	list<Node> path;
 	void construct_path(std::list<Node>& closed, Node * node);
 	Map* mapPointer;

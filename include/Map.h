@@ -10,11 +10,13 @@ class Map
 {
 private:
 public:
+	Map();
+	~Map();
 	static const short unsigned rows = 32;
 	static const short unsigned columns = 44;
-	Map();
-	void DrawMap(sf::RenderTarget & target);
-	~Map();
+	//pointer to an 2D array which stores all the nodes we need for A*
 	Node* mapArray[rows][columns];
+	//draw the map
+	void DrawMap(sf::RenderTarget & target);
 };
 

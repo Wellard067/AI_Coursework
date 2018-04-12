@@ -36,7 +36,7 @@ private:
 	float calculateNeededAngle(Position p);//needed angle to rotate
 	float calculateDistance(Position p);//distance between AI and target
 
-	enum EnemyType { TANK, BASE, NOTHING };
+	enum EnemyType { TANK, BASE, NOTHING};
 	EnemyType enemyType = NOTHING;
 	//turretAimMachines and its states, this machines handles the aiming for the turret
 	enum TurretAimState { AIM, DETECTION,NOAMMO};
@@ -54,13 +54,13 @@ private:
 	void tankMovementMachine();
 	void runTankMachine(float deltaR);
 	//pathFindingMachine and its states, this machines handles the pathing for the tank
-	enum PathFindingState { STAND, MOVE_TO_CENTRE, MOVE_DIAGONAL, COLLISION,MOVE_TO_OPP_X ,MOVE_TO_OPP_Y,FINISH_PRE_PATH};
+	enum PathFindingState { STAND, MOVE_DIAGONAL, COLLISION,MOVE_TO_OPP_X ,MOVE_TO_OPP_Y,FINISH_PRE_PATH};
 	PathFindingState pathFindingState = MOVE_DIAGONAL;
 	void pathFindingMachine();
 	void runPathFindingMachine();
 	//records the last area where that the tank is heading to
-	enum LastArea { TOP_LEFT, BOTTOM_LEFT, TOP_RIGHT, BOTTOM_RIGHT, MIDDLE };
-	LastArea lastArea = MIDDLE;
+	enum LastArea { TOP_LEFT, BOTTOM_LEFT, TOP_RIGHT, BOTTOM_RIGHT,SPAWN};
+	LastArea lastArea = SPAWN;
 	//set the currentNode depends on the X and Y position of the AI tank
 	void setCurrentNode();
 	//go throught the path we found using A*
@@ -91,7 +91,7 @@ private:
 	bool targetNodeInitialized = false;
 	//the tank only fire a shell if firining is equals to true
 	bool firing = false;
-
+	//see if an enemy has been detected
 	bool detectedEnemy = false;
 
 	float targetRotationAngle = 0;
@@ -108,6 +108,7 @@ private:
 
 	bool foundPath = false;
 	int amountReconstrctedPath = 0;
+
 	bool collisionDetected = false;
 	int coliisionTimer = 0;
 
