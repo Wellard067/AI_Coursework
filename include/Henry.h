@@ -77,6 +77,9 @@ private:
 	bool tankLocated(string position);
 	//checks if the tank has reached the goal node
 	bool tankReachedGoal(int row, int column);
+	//x and y position of goal node
+	int goalNodeX = 0;
+	int goalNodeY = 0;
 	//varaible that call the "tankReachedGoal" function and store the result
 	bool reachedFinalGoal = false;
 	//pointer to AStar object
@@ -96,24 +99,24 @@ private:
 
 	float targetRotationAngle = 0;
 	bool detectingEnemy = true;
-
+	//see if turret is facing the target
+	bool turretHasTargetLocked = false;
+	//distance between AI tank and friendly base
 	float friendlyBaseDistance = 0;
+	//angle between AI tank and friendly base
 	float friendlyBaseAngle = 0;
-	bool facingFrendlyBase = false;
+	//if the AI tank is facing friendly base
+	bool facingFriendlyBase = false;
 
 	float enemyBaseDistance = 0;
 	float safeDistance = 90.0f;
-
-	bool turretHasTargetLocked = false;
-
+	//if the path is found
 	bool foundPath = false;
 	int amountReconstrctedPath = 0;
-
+	//check if collision 
 	bool collisionDetected = false;
 	int coliisionTimer = 0;
 
-	int goalNodeX=0;
-	int goalNodeY=0;
 
 };
 
