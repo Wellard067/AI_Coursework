@@ -44,7 +44,6 @@ void Node::setWall()
 
 void Node::setPath()
 {
-	traversable = true;
 	rect.setFillColor(sf::Color(255, 255, 255, 50));
 }
 bool Node::isTraversable()

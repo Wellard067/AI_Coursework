@@ -53,11 +53,12 @@ void Henry::move()
 	pathFindingMachine();
 	//responsbile for tank movement
 	tankMovementMachine();
+	//start the collision timer once collision is detected
 	if (collisionDetected)
 	{
 		coliisionTimer++;
 	}
-	facingFrendlyBase = false;
+	facingFriendlyBase = false;
 	detectedEnemy = false;
 }
 
@@ -75,6 +76,7 @@ void Henry::markTarget(Position p)
 {
 	detectedEnemy = true;
 	enemyType = BASE;
+	//calculates distance and needed angle once a target has been found
 	enemyBaseDistance = calculateDistance(p);
 	targetRotationAngle = calculateNeededAngle(p);
 	turretHasTargetLocked = false;
@@ -82,7 +84,9 @@ void Henry::markTarget(Position p)
 
 void Henry::markBase(Position p)
 {
+	//mark friendly base nodes as not traversale
 	markNodeAsNotTraversable(p);
+	//calculates distance and needed angle once a target has been found
 	friendlyBaseDistance = calculateDistance(p);
 	friendlyBaseAngle = calculateNeededAngle(p);
 	if (reachedFinalGoal)
@@ -101,22 +105,22 @@ void Henry::markBase(Position p)
 	}
 	float friendlyBaseDeltaR = turretTh - friendlyBaseAngle;
 	if (friendlyBaseDeltaR > 25 && friendlyBaseDeltaR < 180) {
-		facingFrendlyBase = false;
+		facingFriendlyBase = false;
 	}
 	else if (friendlyBaseDeltaR < -25 && friendlyBaseDeltaR > -180) {
-		facingFrendlyBase = false;
+		facingFriendlyBase = false;
 	}
 	else if (friendlyBaseDeltaR > 180) {
-		facingFrendlyBase = false;
+		facingFriendlyBase = false;
 	}
 	else if (friendlyBaseDeltaR < -180) {
-		facingFrendlyBase = false;
+		facingFriendlyBase = false;
 	}
 	else
 	{
-		facingFrendlyBase = true;
+		facingFriendlyBase = true;
 	}
-	cout << facingFrendlyBase << endl;
+	cout << facingFriendlyBase << endl;
 }
 void Henry::markShell(Position p)
 {
@@ -196,13 +200,16 @@ void Henry::turretAimMachine()
 	{
 		turretAimState = NOAMMO;
 	}
-	if (turretAimState == DETECTION&&detectedEnemy&&!facingFrendlyBase)
+	if (turretAimState == DETECTION&&detectedEnemy&&!facingFriendlyBase)
 	{
 		turretAimState = AIM;
 	}
-	if (turretAimState == AIM&&!detectedEnemy)
+	if (turretAimState == AIM)
 	{
-		turretAimState = DETECTION;
+		if (!detectedEnemy|| facingFriendlyBase)
+		{
+			turretAimState = DETECTION;
+		}
 	}
 	runTurretAimStateMachine();
 }
@@ -213,14 +220,13 @@ void Henry::runTurretAimStateMachine()
 	case DETECTION:
 	{
 		detectingEnemy = true;
+		//scanning by rotating turret clock-wise
 		turretGoRight();
 	}
 	break;
 	case AIM: {
-		if (enemyType = BASE)
-		{
-				pathFindingState = STAND;
-		}
+		pathFindingState = STAND;
+		//Rotate the turret so that it is facing the target
 		float targetAngle = turretTh - targetRotationAngle;
 			if (targetAngle > 1 && targetAngle < 180) {
 				turretGoLeft();
@@ -260,17 +266,16 @@ void Henry::runTurretAimStateMachine()
 void Henry::turretfiringMachine()
 {
 	//switch to different state based on the data the AI gathered
-	if (turretFiringState == LOOKING_FOR_TARGET&&turretHasTargetLocked&&!facingFrendlyBase)
+	if (turretFiringState == LOOKING_FOR_TARGET&&turretHasTargetLocked&&!facingFriendlyBase)
 	{
 			turretFiringState = SHOOTING;
 	}
-	if (turretFiringState == SHOOTING&&facingFrendlyBase)
+	if (turretFiringState == SHOOTING)
 	{
-		turretFiringState = LOOKING_FOR_TARGET;
-	}
-	if (turretFiringState == SHOOTING&&detectingEnemy)
-	{
-		turretFiringState = LOOKING_FOR_TARGET;
+		if (facingFriendlyBase|| detectingEnemy)
+		{
+			turretFiringState = LOOKING_FOR_TARGET;
+		}
 	}
 	runTurretFiringMachine();
 }
@@ -427,13 +432,7 @@ void Henry::pathFindingMachine() {
 	}
 	if (pathFindingState == STAND)
 	{
-		if (!detectedEnemy&&detectingEnemy)
-		{
-			foundPath = false;
-			reachedFinalGoal = false;
-			pathFindingState = FINISH_PRE_PATH;
-		}
-		if (!hasAmmo())
+		if ((!detectedEnemy&&detectingEnemy)||!hasAmmo())
 		{
 			foundPath = false;
 			reachedFinalGoal = false;
@@ -491,6 +490,7 @@ void Henry::runPathFindingMachine()
 	break;
 	case MOVE_TO_OPP_X:
 	{
+		//find path based on where the AI tank is located
 		if (tankLocated("TOP_RIGHT"))
 		{
 			findPathTo(TOP_LEFT, MOVE_TO_OPP_X);
@@ -511,6 +511,7 @@ void Henry::runPathFindingMachine()
 		break;
 	case MOVE_TO_OPP_Y:
 	{
+		//find path based on where the AI tank is located
 		if (tankLocated("BOTTOM_LEFT"))
 		{
 			findPathTo(TOP_LEFT, MOVE_TO_OPP_Y);
@@ -531,6 +532,7 @@ void Henry::runPathFindingMachine()
 		break;
 	case MOVE_DIAGONAL:
 	{
+		//find path based on where the AI tank is located
 		if (tankLocated("BOTTOM_LEFT"))
 		{
 			findPathTo(TOP_RIGHT, MOVE_DIAGONAL);
@@ -568,13 +570,15 @@ void Henry::runPathFindingMachine()
 	break;
 	case COLLISION:
 	{
-
+		//randomize enum type
+		lastArea = static_cast<LastArea>(rand() % SPAWN);
 	}
 	break;
 	default:
 		break;
 	}
 }
+
 void Henry::findPathTo(LastArea destination, PathFindingState whatState) {
 	bool addPreviousX;
 	bool addPreviousY;
